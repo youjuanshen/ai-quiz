@@ -2,20 +2,48 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
+  <title>AI Quiz 主页</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AI Quiz Demo</title>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; margin: 24px; }
-    .box { border: 1px solid #ddd; padding: 16px; border-radius: 8px; }
-    button { padding: 10px 16px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+      margin: 0;
+      background: #f7f9fc;
+      padding: 40px;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      padding: 32px;
+    }
+    h1 {
+      color: #007aff;
+      margin-top: 0;
+    }
+    button {
+      background-color: #007aff;
+      border: none;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #005bbb;
+    }
   </style>
 </head>
 <body>
-  <h1>AI Quiz Demo</h1>
-  <p>✅ 看到这个页面说明部署成功。</p>
-  <div class="box">
-    <p>这是用于飞书内嵌测试的最小页面。</p>
-    <button onclick="alert('按钮正常工作！')">点我测试</button>
+  <div class="container">
+    <h1>🎉 AI Quiz 页面测试成功！</h1>
+    <p>你现在看到的网页来自 Cloudflare Pages 部署。</p>
+    <p>接下来你可以在这里添加听力、选择题、图片或任何 HTML 元素。</p>
+    <button onclick="alert('按钮工作正常！')">点我测试</button>
   </div>
 </body>
 </html>
