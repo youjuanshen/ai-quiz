@@ -3,61 +3,371 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AI课堂练习收集器</title>
+  <title>AI Quiz Demo</title>
   <style>
-    body {
-      font-family: system-ui, -apple-system, "Helvetica Neue", Arial;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      background: #f9fafb;
+    :root{
+      --bg:#0b0f19; --card:#121826; --muted:#8aa0b4; --text:#e6edf3; --accent:#6ee7b7; --accent-2:#60a5fa; --danger:#f87171; --ok:#34d399;
     }
-    h1 { font-size: 1.3rem; margin-bottom: 1rem; color: #165dff; }
-    button {
-      background-color: #165dff;
-      color: white;
-      border: none;
-      padding: 0.9rem 1.6rem;
-      border-radius: 10px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-    button:hover { background-color: #0e47c0; }
-    p { color: #555; margin-top: 1rem; font-size: 0.9rem; }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:linear-gradient(180deg,#0b0f19,#0b1222 30%,#0e1324); color:var(--text);}
+    .container{max-width:880px;margin:0 auto;padding:24px}
+    .card{background:var(--card); border:1px solid #1f2937;border-radius:16px; padding:20px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .badge{font-size:12px;color:#0f172a;background:#e2e8f0;border-radius:999px;padding:4px 10px}
+    .muted{color:var(--muted)}
+    button{appearance:none;cursor:pointer;border:1px solid #2b3648;background:#121826;color:var(--text);padding:10px 14px;border-radius:10px;font-weight:600}
+    button.primary{background:linear-gradient(90deg,var(--accent-2),#7c3aed); border-color:transparent}
+    button.ghost{background:transparent;border-color:#2b3648}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .grow{flex:1}
+    .center{display:flex;align-items:center;justify-content:center}
+    .progress{height:10px;background:#111827;border-radius:999px;overflow:hidden}
+    .bar{height:100%;background:linear-gradient(90deg,#22d3ee,#22c55e);width:0%}
+    .pill{display:inline-flex;gap:8px;align-items:center;background:#0f172a;border:1px solid #263244;color:#cbd5e1;padding:6px 10px;border-radius:999px;font-size:12px}
+    .q-title{font-size:20px;font-weight:700;margin:6px 0 14px}
+    .option{display:flex;gap:10px;align-items:flex-start;border:1px solid #263244;background:#0f172a;border-radius:12px;padding:12px;cursor:pointer}
+    .option input{margin-top:2px}
+    .option.correct{border-color:#16a34a;background:#062313}
+    .option.wrong{border-color:#b91c1c;background:#230606}
+    .grid{display:grid;grid-template-columns:1fr;gap:10px}
+    @media(min-width:640px){.grid{grid-template-columns:1fr 1fr}}
+    .footer{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:12px}
+    .code{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;background:#0a1020;border:1px solid #263244;padding:8px;border-radius:8px;white-space:pre-wrap}
+    .hidden{display:none !important}
+    .score{font-size:34px;font-weight:800}
+    .tag{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid #2b3648}
+    .ok{color:#10b981;border-color:#10b98130;background:#06351f}
+    .ng{color:#ef4444;border-color:#ef444430;background:#3a0a0a}
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;border:1px solid #334155;padding:.5px 6px;border-radius:6px;background:#0b1222}
+    a{color:#93c5fd}
   </style>
 </head>
 <body>
-  <h1>📘 AI课堂练习收集器</h1>
-  <button id="openForm">打开表单开始填写</button>
-  <p>请在新窗口填写并提交，数据将自动汇入多维表格。</p>
+  <div class="container">
+    <div class="card">
+      <header>
+        <div class="brand">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l2.39 4.84 5.34.78-3.86 3.76.91 5.32L12 14.77 7.22 16.7l.91-5.32L4.27 7.62l5.34-.78L12 2z" fill="url(#g)"/><defs><linearGradient id="g" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#60a5fa"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs></svg>
+          <div>
+            <div style="font-weight:800">AI Quiz Demo</div>
+            <div class="muted" id="envInfo">正在检测环境…</div>
+          </div>
+        </div>
+        <div class="row">
+          <span class="pill" id="timer">⏱️ 00:00</span>
+          <span class="pill" id="progressText">0 / 0</span>
+        </div>
+      </header>
+
+      <div class="progress" aria-label="进度">
+        <div class="bar" id="bar"></div>
+      </div>
+
+      <main id="stage" style="margin-top:16px"></main>
+
+      <div class="footer">
+        <div class="row">
+          <button class="ghost" id="btnPrev">← 上一题</button>
+          <button class="primary" id="btnNext">下一题 →</button>
+        </div>
+        <div class="row">
+          <button class="ghost" id="btnReset">重做</button>
+          <button class="ghost" id="btnExport">导出CSV</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="muted" style="margin:14px 6px 0">💡 提示：此示例为纯前端、离线可用。不依赖外部库，适合 Cloudflare Pages 与飞书内嵌。可选把成绩 <span class="kbd">POST</span> 到你自己的 Webhook。</p>
+
+    <details style="margin-top:16px">
+      <summary>如何自定义题库 / 成绩上报？（展开查看）</summary>
+      <div class="card" style="margin-top:10px">
+        <div class="q-title">1）编辑题库（在代码顶部的 <span class="kbd">QUESTIONS</span>）</div>
+        <div class="code" id="docQuestions"></div>
+        <div class="q-title">2）设置成绩上报（可选）</div>
+        <p>把 <span class="kbd">window.WEBHOOK_URL</span> 改为你的接口地址即可，系统会 <span class="kbd">POST</span> JSON：</p>
+        <div class="code" id="docPayload"></div>
+        <div class="q-title">3）飞书内嵌</div>
+        <p>Cloudflare Pages 根目录放置 <span class="kbd">_headers</span> 文件，内容如下：</p>
+        <div class="code">/*\n  X-Frame-Options: \n  Content-Security-Policy: frame-ancestors https://*.feishu.cn https://*.larksuite.com https://*.feishu-ptt.cn https://*.larkoffice.com;\n</div>
+      </div>
+    </details>
+  </div>
 
   <script>
-    function getDeviceId() {
-      const key = "device_id_v1";
-      let id = localStorage.getItem(key);
-      if (!id) {
-        id = (crypto.randomUUID?.() || (Date.now() + "-" + Math.random().toString(36).substring(2)));
-        localStorage.setItem(key, id);
-      }
-      return id;
+  // ==================== 配置区 ====================
+  // 可选：把成绩上报到你的后端（留空则不上传，仅本地保存 + CSV 导出）
+  window.WEBHOOK_URL = ""; // 例如 "https://example.com/quiz-webhook"
+
+  // 题库示例：支持三种类型：mc（单选）、tf（判断）、text（简答）
+  const QUESTIONS = [
+    { id:"q1", type:"mc",  points:1, stem:"下列哪一项属于元音？", options:["b","a","t","k"], answer:1, hint:"想想 a e i o u" },
+    { id:"q2", type:"tf",  points:1, stem:"英文句子首字母通常需要大写。", answer:true },
+    { id:"q3", type:"mc",  points:2, stem:"选择与图片意思相同的单词（假设图片是一只猫）", options:["dog","cat","bird","fish"], answer:1 },
+    { id:"q4", type:"text",points:2, stem:"把 ‘Good afternoon’ 正确抄写到输入框（区分大小写）", answer:"Good afternoon", hint:"两个单词，首字母需大写" },
+    { id:"q5", type:"mc",  points:2, stem:"Which one is a greeting?", options:["banana","table","hello","blue"], answer:2 }
+  ];
+
+  // ==================== 状态 & 工具 ====================
+  const $ = sel => document.querySelector(sel);
+  const stage = $('#stage');
+  const btnPrev = $('#btnPrev');
+  const btnNext = $('#btnNext');
+  const btnReset = $('#btnReset');
+  const btnExport = $('#btnExport');
+  const bar = $('#bar');
+  const progressText = $('#progressText');
+  const timerEl = $('#timer');
+  const envInfo = $('#envInfo');
+
+  const attemptId = (()=>{
+    const rnd = Math.random().toString(36).slice(2,8);
+    const ts = new Date().toISOString().replace(/[-:T.Z]/g,"").slice(0,14);
+    return `A${ts}-${rnd}`; // 例如 A20251101-abc123
+  })();
+
+  const state = {
+    startedAt: Date.now(),
+    idx: 0,
+    answers: {}, // { qid: userValue }
+    review: {},  // { qid: {correct:boolean, score:number} }
+    finished: false,
+  };
+
+  function fmtTime(ms){
+    const s = Math.floor(ms/1000); const m = Math.floor(s/60); const ss = s%60;
+    return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+  }
+
+  function tick(){ timerEl.textContent = `⏱️ ${fmtTime(Date.now()-state.startedAt)}`; requestAnimationFrame(tick) }
+  requestAnimationFrame(tick);
+
+  function detectEnv(){
+    const isIframe = window.top !== window.self;
+    const ua = navigator.userAgent;
+    const inFeishu = /Lark|Feishu/i.test(ua) || (isIframe && document.referrer.includes('feishu'));
+    envInfo.textContent = inFeishu? '飞书内嵌环境已检测到 ✓' : '独立浏览器环境';
+  }
+  detectEnv();
+
+  function shuffle(arr){
+    return arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+  }
+
+  const questions = shuffle(QUESTIONS.map(q=>({...q})));
+
+  // ==================== 渲染题目 ====================
+  function render(){
+    const total = questions.length;
+    progressText.textContent = `${Math.min(state.idx+1,total)} / ${total}`;
+    bar.style.width = `${(state.idx)/Math.max(1,total)*100}%`;
+
+    if(state.finished){
+      return renderSummary();
     }
 
-    const FORM_BASE = "https://test-ddxu7eel7xkd.feishu.cn/share/base/form/shrcnLKvaa9tDf6yDsiwpZqAbmg";
-    const CLASS_NAME = "Grade3";
+    const q = questions[state.idx];
+    const saved = state.answers[q.id];
 
-    const fullUrl = FORM_BASE
-      + (FORM_BASE.includes("?") ? "&" : "?")
-      + "prefill_Device%20ID=" + encodeURIComponent(getDeviceId())
-      + "&prefill_Class=" + encodeURIComponent(CLASS_NAME)
-      + "&hide_Device%20ID=1";
+    let html = `<div class="pill">题号：${state.idx+1} / ${total} · 分值 ${q.points}</div>`;
+    html += `<div class="q-title">${escapeHtml(q.stem)}</div>`;
 
-    document.getElementById("openForm").onclick = () => {
-      window.open(fullUrl, "_blank");
+    if(q.type === 'mc'){
+      html += `<div class="grid">`;
+      q.options.forEach((opt,i)=>{
+        const checked = saved === i ? 'checked' : '';
+        html += `
+          <label class="option">
+            <input type="radio" name="opt" value="${i}" ${checked} />
+            <div>${escapeHtml(opt)}</div>
+          </label>`;
+      })
+      html += `</div>`;
+      if(q.hint) html += `<div class="muted" style="margin-top:6px">提示：${escapeHtml(q.hint)}</div>`;
+    }
+
+    if(q.type === 'tf'){
+      const yes = saved === true ? 'checked' : '';
+      const no  = saved === false ? 'checked' : '';
+      html += `
+      <div class="row">
+        <label class="option grow"><input type="radio" name="tf" value="true" ${yes}/> 正确</label>
+        <label class="option grow"><input type="radio" name="tf" value="false" ${no}/> 错误</label>
+      </div>`;
+    }
+
+    if(q.type === 'text'){
+      const val = typeof saved === 'string'? saved : '';
+      html += `<input id="txt" class="option grow" style="padding:12px" placeholder="请输入答案…" value="${escapeHtml(val)}"/>`;
+      if(q.hint) html += `<div class="muted" style="margin-top:6px">提示：${escapeHtml(q.hint)}</div>`;
+    }
+
+    stage.innerHTML = html;
+
+    // 绑定交互
+    stage.querySelectorAll('input[name="opt"]').forEach(el=>{
+      el.addEventListener('change',()=>{
+        state.answers[q.id] = Number(el.value);
+        saveLocal();
+      })
+    });
+    stage.querySelectorAll('input[name="tf"]').forEach(el=>{
+      el.addEventListener('change',()=>{
+        state.answers[q.id] = (el.value === 'true');
+        saveLocal();
+      })
+    });
+    const txt = stage.querySelector('#txt');
+    if(txt) txt.addEventListener('input',()=>{ state.answers[q.id] = txt.value; saveLocal(); });
+
+    btnPrev.disabled = state.idx===0;
+    btnNext.textContent = state.idx === total-1 ? '提交并查看结果 ✓' : '下一题 →';
+  }
+
+  btnPrev.addEventListener('click',()=>{ if(state.idx>0){ state.idx--; render(); } });
+  btnNext.addEventListener('click',()=>{
+    if(state.idx < questions.length-1){ state.idx++; render(); return; }
+    // 提交
+    evaluate();
+    state.finished = true; saveLocal(); render();
+    // 上传（可选）
+    if(window.WEBHOOK_URL){ tryUpload(); }
+  });
+
+  btnReset.addEventListener('click',()=>{
+    if(confirm('确定要重做吗？当前作答将被清空。')){
+      localStorage.removeItem(lsKey());
+      location.reload();
+    }
+  });
+
+  btnExport.addEventListener('click',()=>{
+    const csv = toCSV(payload());
+    download(`quiz_${attemptId}.csv`, csv);
+  });
+
+  function evaluate(){
+    let total=0, got=0; const review={};
+    questions.forEach(q=>{
+      total += q.points;
+      let correct=false;
+      const v = state.answers[q.id];
+      if(q.type==='mc'){ correct = (v===q.answer) }
+      if(q.type==='tf'){ correct = (v===q.answer) }
+      if(q.type==='text'){ correct = (String(v||'').trim() === String(q.answer).trim()) }
+      const score = correct? q.points: 0;
+      if(correct) got += q.points;
+      review[q.id] = {correct, score};
+    });
+    state.review = review; state.totalPoints = total; state.gotPoints = got;
+  }
+
+  function renderSummary(){
+    const percent = Math.round((state.gotPoints/state.totalPoints)*100);
+    const used = fmtTime(Date.now()-state.startedAt);
+    bar.style.width = '100%';
+
+    let html = `<div class="center" style="gap:14px;flex-direction:column">`+
+      `<div class="score">${percent}%</div>`+
+      `<div class="row"><span class="tag ok">得分 ${state.gotPoints} / ${state.totalPoints}</span><span class="tag">用时 ${used}</span><span class="tag">尝试ID ${attemptId}</span></div>`+
+      `</div>`;
+
+    html += `<h3 style="margin-top:18px">题目回顾</h3>`;
+    questions.forEach((q,i)=>{
+      const r = state.review[q.id];
+      html += `<div class="option ${r.correct?'correct':'wrong'}" style="margin-top:8px">`+
+        `<div class="grow"><div style="font-weight:700">${i+1}. ${escapeHtml(q.stem)}</div>`+
+        `<div class="muted">你的答案：${formatUserAns(q, state.answers[q.id])}</div>`+
+        `<div class="muted">正确答案：${formatCorrect(q)}</div>`+
+        `</div>`+
+        `<div style="font-weight:800">${r.score} / ${q.points}</div>`+
+      `</div>`;
+    })
+
+    stage.innerHTML = html;
+    btnPrev.disabled = true; btnNext.disabled = true;
+  }
+
+  function lsKey(){ return `quiz-demo-v1` }
+  function saveLocal(){ localStorage.setItem(lsKey(), JSON.stringify({attemptId, state})) }
+  function loadLocal(){
+    const raw = localStorage.getItem(lsKey());
+    if(!raw) return;
+    try{
+      const obj = JSON.parse(raw);
+      if(obj && obj.state){ Object.assign(state, obj.state); }
+    }catch{}
+  }
+
+  function payload(){
+    const answers = questions.map(q=>({
+      id:q.id, type:q.type, stem:q.stem,
+      user: state.answers[q.id] ?? null,
+      correct: (state.review[q.id]?.correct ?? null),
+      score: (state.review[q.id]?.score ?? 0),
+      points: q.points
+    }));
+    return {
+      attemptId,
+      startedAt: new Date(state.startedAt).toISOString(),
+      finishedAt: new Date().toISOString(),
+      totalPoints: state.totalPoints ?? null,
+      gotPoints: state.gotPoints ?? null,
+      percent: state.totalPoints? Math.round((state.gotPoints/state.totalPoints)*100) : null,
+      userAgent: navigator.userAgent,
+      referrer: document.referrer,
+      location: location.href,
+      answers
     };
+  }
+
+  async function tryUpload(){
+    const url = String(window.WEBHOOK_URL||'').trim();
+    if(!url) return;
+    try{
+      const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload())});
+      console.log('upload status', res.status);
+    }catch(err){ console.warn('upload failed', err) }
+  }
+
+  // ==================== 小工具 ====================
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])) }
+  function formatUserAns(q, v){
+    if(q.type==='mc'){ return escapeHtml(q.options[Number(v)] ?? '未作答') }
+    if(q.type==='tf'){ return v===true? '正确' : v===false? '错误' : '未作答' }
+    if(q.type==='text'){ return v? `<span class="kbd">${escapeHtml(v)}</span>` : '未作答' }
+  }
+  function formatCorrect(q){
+    if(q.type==='mc'){ return escapeHtml(q.options[q.answer]) }
+    if(q.type==='tf'){ return q.answer? '正确':'错误' }
+    if(q.type==='text'){ return `<span class="kbd">${escapeHtml(q.answer)}</span>` }
+  }
+  function toCSV(obj){
+    const rows = [
+      ['attemptId','startedAt','finishedAt','totalPoints','gotPoints','percent','userAgent','referrer','location'],
+      [obj.attemptId,obj.startedAt,obj.finishedAt,obj.totalPoints,obj.gotPoints,obj.percent,obj.userAgent,obj.referrer,obj.location],
+      [],
+      ['id','type','points','score','correct','stem','user'],
+      ...obj.answers.map(a=>[a.id,a.type,a.points,a.score,a.correct, a.stem.replace(/\n/g,' '), JSON.stringify(a.user)])
+    ];
+    return rows.map(r=>r.map(x=>`"${String(x??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  }
+  function download(name, text){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text],{type:'text/csv'}));
+    a.download = name; a.click(); URL.revokeObjectURL(a.href);
+  }
+
+  // ==================== 初始化 ====================
+  loadLocal();
+  render();
+
+  // 文档示例块
+  $('#docQuestions').textContent = JSON.stringify(QUESTIONS, null, 2);
+  $('#docPayload').textContent = JSON.stringify(payload(), null, 2);
   </script>
 </body>
 </html>
