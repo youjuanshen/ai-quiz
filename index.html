@@ -43,6 +43,7 @@
     .ng{color:#ef4444;border-color:#ef444430;background:#3a0a0a}
     .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;border:1px solid #334155;padding:.5px 6px;border-radius:6px;background:#0b1222}
     a{color:#93c5fd}
+    .input{background:#0f172a;border:1px solid #263244;color:#cbd5e1;padding:6px 10px;border-radius:999px;font-size:12px;outline:none}
   </style>
 </head>
 <body>
@@ -66,6 +67,13 @@
         <div class="bar" id="bar"></div>
       </div>
 
+      <!-- 可选：基础信息输入 -->
+      <div class="row" style="margin:10px 0 0">
+        <input class="input" id="nameInput" placeholder="姓名（可选）" />
+        <input class="input" id="sidInput" placeholder="学号（可选）" />
+        <input class="input" id="classInput" placeholder="班级（可选）" />
+      </div>
+
       <main id="stage" style="margin-top:16px"></main>
 
       <div class="footer">
@@ -80,29 +88,28 @@
       </div>
     </div>
 
-    <p class="muted" style="margin:14px 6px 0">💡 提示：此示例为纯前端、离线可用。不依赖外部库，适合 Cloudflare Pages 与飞书内嵌。可选把成绩 <span class="kbd">POST</span> 到你自己的 Webhook。</p>
+    <p class="muted" style="margin:14px 6px 0">💡 提示：提交后会把成绩通过你的 Worker 写入飞书多维表格。</p>
 
     <details style="margin-top:16px">
       <summary>如何自定义题库 / 成绩上报？（展开查看）</summary>
       <div class="card" style="margin-top:10px">
         <div class="q-title">1）编辑题库（在代码顶部的 <span class="kbd">QUESTIONS</span>）</div>
         <div class="code" id="docQuestions"></div>
-        <div class="q-title">2）设置成绩上报（可选）</div>
-        <p>把 <span class="kbd">window.WEBHOOK_URL</span> 改为你的接口地址即可，系统会 <span class="kbd">POST</span> JSON：</p>
-        <div class="code" id="docPayload"></div>
-        <div class="q-title">3）飞书内嵌</div>
-        <p>Cloudflare Pages 根目录放置 <span class="kbd">_headers</span> 文件，内容如下：</p>
-        <div class="code">/*\n  X-Frame-Options: \n  Content-Security-Policy: frame-ancestors https://*.feishu.cn https://*.larksuite.com https://*.feishu-ptt.cn https://*.larkoffice.com;\n</div>
+        <div class="q-title">2）飞书内嵌</div>
+        <p>Cloudflare Pages 根目录放置 <span class="kbd">_headers</span> 文件：</p>
+        <div class="code">/*\n  X-Frame-Options:\n  Content-Security-Policy: frame-ancestors https://*.feishu.cn https://*.larksuite.com https://*.feishu-ptt.cn https://*.larkoffice.com;\n</div>
       </div>
     </details>
   </div>
 
   <script>
   // ==================== 配置区 ====================
-  // 可选：把成绩上报到你的后端（留空则不上传，仅本地保存 + CSV 导出）
-  window.WEBHOOK_URL = ""; // 例如 "https://example.com/quiz-webhook"
+  // 已替换为你的 Worker 根地址（无尾部斜杠）
+  const WORKER_BASE = 'https://ai-quiz-api.shenyoujuan387.workers.dev';
+  // 提交到 Worker 的 /bitable/write
+  window.WEBHOOK_URL = WORKER_BASE ? `${WORKER_BASE}/bitable/write` : "";
 
-  // 题库示例：支持三种类型：mc（单选）、tf（判断）、text（简答）
+  // 题库示例
   const QUESTIONS = [
     { id:"q1", type:"mc",  points:1, stem:"下列哪一项属于元音？", options:["b","a","t","k"], answer:1, hint:"想想 a e i o u" },
     { id:"q2", type:"tf",  points:1, stem:"英文句子首字母通常需要大写。", answer:true },
@@ -126,14 +133,14 @@
   const attemptId = (()=>{
     const rnd = Math.random().toString(36).slice(2,8);
     const ts = new Date().toISOString().replace(/[-:T.Z]/g,"").slice(0,14);
-    return `A${ts}-${rnd}`; // 例如 A20251101-abc123
+    return `A${ts}-${rnd}`;
   })();
 
   const state = {
     startedAt: Date.now(),
     idx: 0,
-    answers: {}, // { qid: userValue }
-    review: {},  // { qid: {correct:boolean, score:number} }
+    answers: {},
+    review: {},
     finished: false,
   };
 
@@ -230,11 +237,11 @@
   btnPrev.addEventListener('click',()=>{ if(state.idx>0){ state.idx--; render(); } });
   btnNext.addEventListener('click',()=>{
     if(state.idx < questions.length-1){ state.idx++; render(); return; }
-    // 提交
+    // 提交并计分
     evaluate();
     state.finished = true; saveLocal(); render();
-    // 上传（可选）
-    if(window.WEBHOOK_URL){ tryUpload(); }
+    // 上传到飞书（通过你的 Worker）
+    if (window.WEBHOOK_URL) { postToFeishu().catch(console.error); }
   });
 
   btnReset.addEventListener('click',()=>{
@@ -324,13 +331,33 @@
     };
   }
 
-  async function tryUpload(){
-    const url = String(window.WEBHOOK_URL||'').trim();
-    if(!url) return;
+  // 提交到你的 Worker → 飞书多维表格
+  async function postToFeishu(){
     try{
-      const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload())});
-      console.log('upload status', res.status);
-    }catch(err){ console.warn('upload failed', err) }
+      const name = $('#nameInput')?.value?.trim() || '未填';
+      const sid  = $('#sidInput')?.value?.trim()  || attemptId;
+      const cls  = $('#classInput')?.value?.trim()|| '';
+      const fields = {
+        "姓名": name,
+        "学号": sid,
+        "班级": cls,
+        "得分": Number(state.gotPoints || 0),
+        "提交时间": new Date().toISOString(),
+        "设备": navigator.userAgent,
+        "音频URL": ""
+      };
+      const res = await fetch(window.WEBHOOK_URL, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ fields })
+      });
+      const data = await res.json();
+      console.log('Feishu write', data);
+      if(!data.ok){ alert('写入飞书失败：' + JSON.stringify(data)); }
+    }catch(err){
+      console.warn('Feishu write error', err);
+      alert('写入飞书失败（网络/跨域）。');
+    }
   }
 
   // ==================== 小工具 ====================
