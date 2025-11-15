@@ -1,146 +1,130 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Unit 1 Lesson 4 — Have a good day!｜课堂微练</title>
-  <style>
-    :root {
-      --bg: #f7f7fb;
-      --card: #ffffff;
-      --ink: #1f2937;
-      --muted: #6b7280;
-      --brand: #2563eb;
-      --ok: #10b981;
-      --bad: #ef4444;
-      --warn: #f59e0b;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
-    .wrap { max-width: 920px; margin: 24px auto; padding: 20px; }
-    .card { background: var(--card); border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,.08); padding: 20px; margin: 14px 0; }
-    h1 { font-size: 28px; margin: 0 0 6px; }
-    .row { display: flex; gap: 12px; flex-wrap: wrap; }
-    .field { flex: 1; min-width: 220px; }
-    input[type=text], select { width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 16px; }
-    button { border: 0; background: var(--brand); color: #fff; padding: 10px 16px; border-radius: 12px; font-weight: 600; cursor: pointer; }
-    button[disabled] { opacity: .5; cursor: not-allowed; }
-    .optgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-    .opt { border: 2px solid #e5e7eb; border-radius: 12px; padding: 12px; cursor: pointer; background: #fff; }
-    .opt.selected { border-color: var(--brand); box-shadow: 0 0 0 4px rgba(37,99,235,.12); }
-    .blank { display: inline-flex; align-items: center; justify-content: center; min-width: 56px; min-height: 32px; border: 2px solid #cbd5e1; background: #fff; border-radius: 8px; padding: 4px 6px; font-size: 16px; font-weight: 500; cursor: pointer; }
-    /* Modal Styles */
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); align-items: center; justify-content: center; padding: 20px; }
-    .modal-content { background: #fff; padding: 20px; border-radius: 12px; max-width: 800px; width: 100%; }
-    .modal-content h2 { margin-top: 0; }
-    .close-btn { position: absolute; top: 10px; right: 10px; font-size: 24px; cursor: pointer; }
-  </style>
+    <meta charset="UTF-8">
+    <title>AI 自动评语测验</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7f6; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { color: #5B4FBB; text-align: center; }
+        .question { margin-bottom: 20px; border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        textarea, input[type="number"] { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #7957D5; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #6C4DB7; }
+        #message { margin-top: 15px; padding: 10px; border-radius: 4px; }
+        .success { background-color: #D4EDDA; color: #155724; border: 1px solid #C3E6CB; }
+        .error { background-color: #F8D7DA; color: #721C24; border: 1px solid #F5C6CB; }
+    </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>U1 Lesson 4 — Have a good day! <span class="pill">微练</span></h1>
-      <div class="muted">请选择你的名字 → 点击“开始练习”</div>
-      <div class="row" style="margin-top:10px">
-        <div class="field">
-          <label>名字（请点选）</label>
-          <select id="studentId">
-            <option value="">请选择</option>
-            <option value="S01_张宇豪">01 张宇豪</option>
-            <option value="S02_张佳寒">02 张佳寒</option>
-            <option value="S03_张睿渊">03 张睿渊</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>限时（分钟）</label>
-          <select id="limitMin">
-            <option>5</option>
-            <option selected>9</option>
-            <option>10</option>
-          </select>
-        </div>
-      </div>
-      <div style="margin-top:10px; display:flex; gap:10px; align-items:center">
-        <button id="startBtn">开始练习</button>
-        <div class="muted timer" id="timer">未开始</div>
-        <div class="muted">题量：<span id="qCount">0</span></div>
-        <!-- 添加预览按钮 -->
-        <button id="previewBtn" style="position: absolute; top: 10px; right: 10px;">预览</button>
-      </div>
+    <div class="container">
+        <h1>U1 L1 Nice to meet you 在线测试</h1>
+        <form id="quizForm">
+            
+            <h2>Part 2: 圈出不同类 (每题1分)</h2>
+            <div class="question" data-id="P2Q1">
+                <p>1. A. Mr. &nbsp;&nbsp;&nbsp;&nbsp; B. Sally &nbsp;&nbsp;&nbsp;&nbsp; C. Miss</p>
+                <label><input type="radio" name="P2Q1" value="A"> A</label>
+                <label><input type="radio" name="P2Q1" value="B"> B</label>
+                <label><input type="radio" name="P2Q1" value="C"> C</label>
+            </div>
+            
+            <div class="question" data-id="P2Q3">
+                <p>2. A. I &nbsp;&nbsp;&nbsp;&nbsp; B. am &nbsp;&nbsp;&nbsp;&nbsp; C. you</p>
+                <label><input type="radio" name="P2Q3" value="A"> A</label>
+                <label><input type="radio" name="P2Q3" value="B"> B</label>
+                <label><input type="radio" name="P2Q3" value="C"> C</label>
+            </div>
+
+            <h2>Part 3: 情景交际 (每题1分)</h2>
+            <div class="question" data-id="P3Q1">
+                <p>3. 听到 “Nice to meet you.” 我们应当说 (         )</p>
+                <label><input type="radio" name="P3Q1" value="A"> A. Nice to meet you, too.</label>
+                <label><input type="radio" name="P3Q1" value="B"> B. I’m banana.</label>
+            </div>
+
+            <div class="question" data-id="P3Q2">
+                <p>4. 王涛想向新同学介绍自己时，他应该说 (         )</p>
+                <label><input type="radio" name="P3Q2" value="A"> A. Hello, I’m Wang Tao.</label>
+                <label><input type="radio" name="P3Q2" value="B"> B. I’m Wang Tao</label>
+            </div>
+            
+            <label for="answer_raw">📝 简答/作文 (AI评语的依据):</label>
+            <textarea id="answer_raw" name="Answer_Raw" rows="4" placeholder="例如：我觉得这些题很简单，全部都做对了。" required></textarea>
+
+            <button type="submit">提交并获取 AI 评语</button>
+        </form>
+        
+        <div id="result"></div>
+        <p id="message"></p>
     </div>
 
-    <!-- 题目区域 -->
-    <div id="quiz"></div>
+    <script>
+        // ******************* 您的 Make.com Webhook URL *******************
+        const WEBHOOK_URL = "https://hook.eu1.make.com/5nx5elyzjbbi8hujod7f4s6whmgthqc5"; // 请确保这里是您最新的 URL
+        // *******************************************************************
 
-    <!-- 结果区域 -->
-    <div id="finish" class="card" style="display:none">
-      <h2>💡 结果</h2>
-      <p>
-        总分：<b id="score"></b> / <span id="scoreMax"></span>
-        （正确 <span id="right"></span> 题 / 共 <span id="total"></span> 题）
-      </p>
-      <div id="heat"></div>
-      <div class="footer" style="margin-top:12px">
-        <button id="exportCsv">导出本次结果 CSV</button>
-        <button id="retry">重新作答</button>
-      </div>
-    </div>
-    
-    <!-- 预览弹窗 -->
-    <div id="previewModal" class="modal">
-      <div class="modal-content">
-        <span class="close-btn" id="closePreview">&times;</span>
-        <h2>预览 - 当前生成的练习题</h2>
-        <div id="previewQuiz"></div>
-        <button id="startQuizPreview">开始答题</button>
-      </div>
-    </div>
-  </div>
+        // 自动判分的逻辑核心：正确答案
+        const CORRECT_ANSWERS = { 'P2Q1': 'B', 'P2Q3': 'B', 'P3Q1': 'A', 'P3Q2': 'A' }; // 键：题目ID，值：正确选项
+        const MAX_SCORE = Object.keys(CORRECT_ANSWERS).length; // 理论最高分 (4题 x 1分/题)
 
-  <script>
-    var bank = [
-      { id: 'Q1', phase: '理解', score: 2, type: 'single-choice', zh: '选择最合适的问候语：', options: [{ key: 'A', label: 'Good morning, Li Li!' }, { key: 'B', label: 'Goodbye, Li Li!' }, { key: 'C', label: 'How are you, Li Li?' }], answer: 'A' },
-      { id: 'Q2', phase: '理解', score: 2, type: 'single-choice', zh: '选择最合适的告别语：', options: [{ key: 'A', label: 'Good morning!' }, { key: 'B', label: 'Goodbye, see you tomorrow!' }, { key: 'C', label: 'How are you?' }], answer: 'B' },
-      { id: 'Q3', phase: '理解', score: 2, type: 'cloze', zh: '填空：I’m ________, thank you!', tokens: ['fine', 'good', 'bad'], blanks: ['fine'], answer: 'fine' },
-      { id: 'Q4', phase: '理解', score: 3, type: 'bank-build', zh: '翻译成英文：“再见，李莉。”', tokens: ['Goodbye', 'Li', 'Li', '.'], blanks: ['Goodbye', 'Li', 'Li', '.'], answer: 'Goodbye, Li Li.' }
-    ];
+        document.getElementById('quizForm').addEventListener('submit', function(event) {
+            event.preventDefault(); 
+            const form = event.target;
+            const messageBox = document.getElementById('message');
+            const resultDiv = document.getElementById('result');
+            
+            // 1. 获取简答内容
+            const answerRaw = document.getElementById('answer_raw').value;
 
-    // 题目渲染逻辑
-    function render() {
-      let quizContainer = document.getElementById('quiz');
-      quizContainer.innerHTML = '';
-      bank.forEach(function (q, i) {
-        var card = document.createElement('div');
-        card.className = 'card';
-        var title = '<h2>' + (i + 1) + '. ' + (q.zh || q.en || '') + '</h2>';
-        card.innerHTML = title + buildQuestion(q);
-        quizContainer.appendChild(card);
-      });
-      document.getElementById('qCount').textContent = bank.length;
-    }
+            // 2. 自动判客观题得分
+            let studentScore = 0;
+            for (const [questionId, correctAnswer] of Object.entries(CORRECT_ANSWERS)) {
+                const selectedOption = form.elements[questionId].value;
+                if (selectedOption === correctAnswer) {
+                    studentScore += 1; // 答对一题加 1 分
+                }
+            }
 
-    // 渲染问题内容
-    function buildQuestion(q) {
-      var html = '';
-      if (q.type === 'single-choice') {
-        html = '<div>' + q.zh + '</div>';
-        q.options.forEach(function (option) {
-          html += `<div class="opt" data-id="${q.id}" data-value="${option.key}">${option.key}. ${option.label}</div>`;
+            // 3. 显示得分结果
+            resultDiv.innerHTML = `您的客观题得分: ${studentScore} / ${MAX_SCORE}`;
+            
+            // 4. 准备发送给 Make.com 的数据
+            const dataToSend = {
+                Answer_Raw: answerRaw, // 包含学生填写的简答作文
+                Score_Raw: studentScore // 自动判分得到的总分
+            };
+
+            // 5. 发送数据到 Webhook
+            messageBox.textContent = '正在发送数据到 Make.com...';
+            messageBox.className = '';
+
+            fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(dataToSend)
+            })
+            .then(response => {
+                if (response.ok) {
+                    messageBox.textContent = '✅ 提交成功！Make.com 流程已触发，AI 评语正在生成中...';
+                    messageBox.className = 'success';
+                } else {
+                    // Make.com 流程启动失败时
+                    messageBox.textContent = '❌ 提交失败，Make.com Webhook 返回错误。请检查 Make.com 流程是否开启。';
+                    messageBox.className = 'error';
+                }
+            })
+            .catch(error => {
+                // 网络请求失败，通常是超时或 CodePen 环境问题导致的
+                messageBox.textContent = '❌ 网络请求失败。但后台可能已运行，请查看 Google Sheets。';
+                messageBox.className = 'error';
+                console.error('网络请求失败:', error);
+            });
         });
-      } else if (q.type === 'cloze') {
-        html = `<div>${q.zh}</div><div class="blank" data-id="${q.id}"></div>`;
-        q.tokens.forEach(function (token) {
-          html += `<span class="token" data-id="${q.id}" data-token="${token}">${token}</span>`;
-        });
-      }
-      return html;
-    }
 
-    // 预览功能：显示预览弹窗
-    document.getElementById('previewBtn').addEventListener('click', function() {
-      var previewContainer = document.getElementById('previewQuiz');
-      previewContainer.innerHTML = '';
-      bank.forEach(function (q) {
-        var card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = '<h
+    </script>
+</body>
+</html>
