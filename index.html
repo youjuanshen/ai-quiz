@@ -4,7 +4,9 @@ const SHEET_ID = '1fov6b9Py6GtdUCOAe0-VjrzI-yYxuKWEIuf0_ouzqH8';
 // 您的 Make.com Webhook URL
 const WEBHOOK_URL = "https://hook.eu1.make.com/5nx5elyzjbbi8hujod7f4s6whmgthqc5"; 
 const GID = '0'; // 通常是第一个工作表的 ID
-const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`;
+
+// *** 核心修复：使用更可靠的 /export 链接格式 ***
+const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
 
 // 全局变量用于存储加载的题目数据和正确答案
 let QUIZ_DATA = [];
@@ -12,7 +14,7 @@ let CORRECT_ANSWERS = {};
 const SCORE_PER_QUESTION = 5; // 每题 5 分
 
 // ----------------------------------------------------
-// 核心函数 - 加载并解析 Google Sheet 数据 (已优化 CSV 清理)
+// 核心函数 - 加载并解析 Google Sheet 数据 
 // ----------------------------------------------------
 async function loadQuizData() {
     const quizForm = document.getElementById('quizForm');
