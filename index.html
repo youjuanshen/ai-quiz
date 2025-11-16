@@ -9,10 +9,10 @@ const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gvi
 // 全局变量用于存储加载的题目数据和正确答案
 let QUIZ_DATA = [];
 let CORRECT_ANSWERS = {};
-const SCORE_PER_QUESTION = 5; // 根据您的测验结构，每题 5 分
+const SCORE_PER_QUESTION = 5; // 每题 5 分
 
 // ----------------------------------------------------
-// 核心函数 - 加载并解析 Google Sheet 数据
+// 核心函数 - 加载并解析 Google Sheet 数据 (已优化 CSV 清理)
 // ----------------------------------------------------
 async function loadQuizData() {
     const quizForm = document.getElementById('quizForm');
@@ -27,17 +27,26 @@ async function loadQuizData() {
         const response = await fetch(GOOGLE_SHEET_URL);
         const csvText = await response.text();
         
-        // 解析 CSV 数据
+        // 核心优化：更严格的 CSV 解析和清理
         const lines = csvText.trim().split('\n');
-        // CSV 数据可能包含引号和空格，我们需要清理列名
-        const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
         
+        // 1. 清理并标准化 Headers
+        const headers = lines[0].split(',')
+            .map(h => h.replace(/"/g, '').trim()) // 移除引号并修剪空格
+            .filter(h => h.length > 0); // 移除空列名
+
+        if (lines.length <= 1 || headers.length < 5) {
+             // 如果只有表头或表头不完整，视为加载失败
+             throw new Error('CSV data is empty or malformed.');
+        }
+
         for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+            const values = lines[i].split(',');
             const question = {};
             
             for (let j = 0; j < headers.length; j++) {
-                question[headers[j]] = values[j] || ''; // 确保空值处理
+                // 2. 清理并映射 Values
+                question[headers[j]] = (values[j] || '').replace(/"/g, '').trim(); 
             }
             
             // 只有包含 Question_ID 的有效行才被视为题目
@@ -47,6 +56,11 @@ async function loadQuizData() {
             }
         }
         
+        // 如果没有加载到任何有效题目，也视为失败
+        if (QUIZ_DATA.length === 0) {
+             throw new Error('No valid questions found in the sheet data.');
+        }
+
         // 渲染题目并更新 UI
         renderQuiz();
         document.getElementById('qCount').textContent = QUIZ_DATA.length;
@@ -55,18 +69,18 @@ async function loadQuizData() {
         
     } catch (error) {
         console.error('Error loading quiz data from Google Sheet:', error);
-        quizForm.innerHTML = '<p style="color: red;">❌ 无法加载题库，请检查 Google Sheet 链接和权限。</p>';
+        quizForm.innerHTML = '<p style="color: red;">❌ 无法加载题库，请检查 Google Sheet 数据或链接/权限。</p>';
         startBtn.textContent = '加载失败';
     }
 }
+
 
 // ----------------------------------------------------
 // 渲染题目到 HTML 页面
 // ----------------------------------------------------
 function renderQuiz() {
     const quizForm = document.getElementById('quizForm');
-    quizForm.innerHTML = ''; // 确保清空了所有的硬编码题目
-
+    
     let htmlContent = '';
     let currentPart = ''; 
 
@@ -99,7 +113,7 @@ function renderQuiz() {
     // 渲染动态生成的题目
     quizForm.innerHTML = htmlContent;
 
-    // 添加固定的简答题和提交按钮
+    // 添加固定的简答题和提交按钮 (确保提交按钮在 form 内)
     quizForm.innerHTML += `
         <label for="answer_raw">📝 简答/作文 (AI评语的依据):</label>
         <textarea id="answer_raw" name="Answer_Raw" rows="4" placeholder="例如：我觉得这些题很简单，全部都做对了。" required></textarea>
@@ -107,6 +121,7 @@ function renderQuiz() {
     `;
     
     // 重新绑定提交事件
+    document.getElementById('quizForm').removeEventListener('submit', handleSubmit);
     document.getElementById('quizForm').addEventListener('submit', handleSubmit);
 }
 
@@ -145,7 +160,7 @@ function handleSubmit(event) {
         // 记录作答
         answerRaw[questionId] = selectedAnswer;
 
-        if (selectedAnswer === correctAnswer) {
+        if (selectedAnswer === correctAnswer && selectedAnswer !== null) { // 增加 null 检查，确保用户有选择
             Grand_Total += SCORE_PER_QUESTION;
             
             // 根据 Part 字段划分细分分数
@@ -172,8 +187,9 @@ function handleSubmit(event) {
     };
 
     // 3. 锁定表单并发送数据
-    document.querySelector('button[type="submit"]').textContent = '正在提交...';
-    document.querySelector('button[type="submit"]').disabled = true;
+    const submitButton = document.querySelector('button[type="submit"]');
+    submitButton.textContent = '正在提交...';
+    submitButton.disabled = true;
 
     fetch(WEBHOOK_URL, {
         method: 'POST',
@@ -185,16 +201,16 @@ function handleSubmit(event) {
     .then(response => {
         if (response.ok) {
             alert(`✅ 提交成功！客观题得分：${Grand_Total} 分。数据已归档到 Make.com。`);
-            document.querySelector('button[type="submit"]').textContent = '提交成功';
+            submitButton.textContent = '提交成功';
         } else {
             alert("❌ 提交失败，请检查 Make.com Webhook 或网络。");
-            document.querySelector('button[type="submit"]').textContent = '提交失败';
+            submitButton.textContent = '提交失败';
         }
     })
     .catch(error => {
         console.error('发送过程中发生错误:', error);
         alert('❌ 发送过程中发生错误，请联系管理员。');
-        document.querySelector('button[type="submit"]').textContent = '提交失败';
+        submitButton.textContent = '提交失败';
     });
 }
 
@@ -202,6 +218,4 @@ function handleSubmit(event) {
 // 启动函数：页面加载时执行
 window.onload = function() {
     loadQuizData();
-    // 监听开始按钮 (如果需要计时功能，可以扩展 startBtn 的点击事件)
-    // document.getElementById('startBtn').addEventListener('click', loadQuizData);
 };
