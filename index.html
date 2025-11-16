@@ -1,66 +1,65 @@
-// 🔑 步骤 1: 定义 Google Sheet 链接和配置
-// 您的“测验题库” Google Sheet ID
-const SHEET_ID = '1fov6b9Py6GtdUCOAe0-VjrzI-yYxuKWEIuf0_ouzqH8'; 
-// 您的 Make.com Webhook URL
-const WEBHOOK_URL = "https://hook.eu1.make.com/5nx5elyzjbbi8hujod7f4s6whmgthqc5"; 
-const GID = '0'; // 通常是第一个工作表的 ID
-
-// *** 核心修复：从 GitHub 本地加载 CSV 文件，解决跨域问题 ***
-// 请确保在 GitHub 根目录上传了一个名为 quiz_data.csv 的文件！
+// 步骤 1：定义常量 - 改为加载本地的 quiz_data.csv 文件
+// 确保 quiz_data.csv 文件已上传到 GitHub 仓库根目录
 const GOOGLE_SHEET_URL = 'quiz_data.csv'; 
 
-// 全局变量用于存储加载的题目数据和正确答案
-let QUIZ_DATA = [];
-let CORRECT_ANSWERS = {};
+// 常量保持不变 (例如：您的 Webhook URL, 分数设定)
+// const WEBHOOK_URL = 'https://hook.eu1.make.com/...';
 const SCORE_PER_QUESTION = 5; // 每题 5 分
 
+
 // ----------------------------------------------------
-// 核心函数 - 加载并解析 CSV 数据 
+// 核心函数 - 加载并解析 CSV 数据 (增强容错版) 
 // ----------------------------------------------------
 async function loadQuizData() {
     const quizForm = document.getElementById('quizForm');
     const startBtn = document.getElementById('startBtn');
     
-    // 禁用按钮并显示加载状态
     startBtn.disabled = true;
     startBtn.textContent = '加载题库中...';
-    quizForm.innerHTML = ''; // 清空原有硬编码题目
+    quizForm.innerHTML = ''; 
 
     try {
         // 使用本地链接加载文件
         const response = await fetch(GOOGLE_SHEET_URL); 
         
-        // 检查文件加载是否成功 (Status 200)
         if (!response.ok) {
+             // 如果文件加载失败 (例如 404)，抛出错误
              throw new Error(`Failed to load ${GOOGLE_SHEET_URL}. Status: ${response.status}`);
         }
         
         const csvText = await response.text();
         
-        // 核心优化：更严格的 CSV 解析和清理
-        const lines = csvText.trim().split('\n');
+        // 核心优化：使用更健壮的解析逻辑
+        // 1. .trim() 移除首尾空白
+        // 2. .split('\n') 分割行
+        // 3. .filter(line => line.trim().length > 0) 彻底移除空行
+        const lines = csvText.trim().split('\n').filter(line => line.trim().length > 0); 
         
-        // 1. 清理并标准化 Headers
+        // 1. 清理并标准化 Headers (列名)
         const headers = lines[0].split(',')
-            .map(h => h.replace(/"/g, '').trim()) // 移除引号并修剪空格
-            .filter(h => h.length > 0); // 移除空列名
+            .map(h => h.replace(/"/g, '').trim()) // 移除引号和空格
+            .filter(h => h.length > 0); 
 
         if (lines.length <= 1 || headers.length < 5) {
-             // 如果只有表头或表头不完整，视为加载失败
              throw new Error('CSV data is empty or malformed.');
         }
 
+        // 清空旧数据
+        QUIZ_DATA = []; 
+        CORRECT_ANSWERS = {};
+        
         for (let i = 1; i < lines.length; i++) {
             const values = lines[i].split(',');
             const question = {};
             
             for (let j = 0; j < headers.length; j++) {
                 // 2. 清理并映射 Values
+                // 确保即使数据行末尾有多余逗号或空值，也能安全处理
                 question[headers[j]] = (values[j] || '').replace(/"/g, '').trim(); 
             }
             
             // 只有包含 Question_ID 的有效行才被视为题目
-            if (question.Question_ID) {
+            if (question.Question_ID && question.Question_ID.length > 0) {
                 QUIZ_DATA.push(question);
                 CORRECT_ANSWERS[question.Question_ID] = question.Correct_Answer;
             }
@@ -79,153 +78,8 @@ async function loadQuizData() {
         
     } catch (error) {
         console.error('Error loading quiz data:', error);
-        quizForm.innerHTML = `<p style="color: red;">❌ 无法加载题库，请检查 quiz_data.csv 文件或网络。</p>`;
+        // 显示明确的错误信息
+        quizForm.innerHTML = `<p style="color: red;">❌ 无法加载题库，请确认 'quiz_data.csv' 文件已上传且格式正确。</p>`;
         startBtn.textContent = '加载失败';
     }
 }
-
-
-// ----------------------------------------------------
-// 渲染题目到 HTML 页面
-// ----------------------------------------------------
-function renderQuiz() {
-    const quizForm = document.getElementById('quizForm');
-    
-    let htmlContent = '';
-    let currentPart = ''; 
-
-    QUIZ_DATA.forEach((q, index) => {
-        // 如果 Part 字段改变，添加新的模块标题 (L/R/W)
-        if (q.Part && q.Part !== currentPart) {
-            currentPart = q.Part;
-            // 假设 Part 字段就是 L, R, W
-            const partMap = { 'L': '听力 (Listening)', 'R': '阅读 (Reading)', 'W': '写作 (Writing)', 'S': '口语 (Speaking)' };
-            htmlContent += `<h2>Part ${q.Part}: ${partMap[q.Part] || q.Part} 模块 (每题 ${SCORE_PER_QUESTION} 分)</h2><hr>`;
-        }
-
-        // 题干 (Question Text)
-        htmlContent += `<div class="question" data-id="${q.Question_ID}">`;
-        htmlContent += `<p>${index + 1}. ${q.Question_Text}</p>`;
-        
-        // 渲染选项 (Option 1 到 Option 5)
-        for (let i = 1; i <= 5; i++) {
-            const optionKey = `Option_${i}`;
-            const optionValue = q[optionKey];
-            
-            if (optionValue && optionValue.trim() !== '') {
-                // 使用选项编号 (i) 作为 value
-                htmlContent += `<label><input type="radio" name="${q.Question_ID}" value="${i}"> ${optionValue}</label><br>`;
-            }
-        }
-        htmlContent += `</div>`;
-    });
-
-    // 渲染动态生成的题目
-    quizForm.innerHTML = htmlContent;
-
-    // 添加固定的简答题和提交按钮 (确保提交按钮在 form 内)
-    quizForm.innerHTML += `
-        <label for="answer_raw">📝 简答/作文 (AI评语的依据):</label>
-        <textarea id="answer_raw" name="Answer_Raw" rows="4" placeholder="例如：我觉得这些题很简单，全部都做对了。" required></textarea>
-        <button type="submit">提交并归档成绩</button>
-    `;
-    
-    // 重新绑定提交事件
-    document.getElementById('quizForm').removeEventListener('submit', handleSubmit);
-    document.getElementById('quizForm').addEventListener('submit', handleSubmit);
-}
-
-
-// ----------------------------------------------------
-// 提交事件处理函数
-// ----------------------------------------------------
-function handleSubmit(event) {
-    event.preventDefault(); 
-
-    const form = event.target;
-    const lessonID = document.getElementById('lessonID_input').value.trim();
-    const studentId = document.getElementById('studentId').value;
-    const answerRawText = document.getElementById('answer_raw').value;
-
-    // 0. 关键数据检查
-    if (!lessonID || lessonID.includes('请填写')) {
-        return alert('❌ 请填写唯一的课程/周次 ID，这是 AI 归档的关键！');
-    }
-    if (!studentId) {
-        return alert('❌ 请选择你的名字！');
-    }
-
-    // 1. 自动判客观题得分 - 细分到 L/R/W
-    let L_Score = 0; 
-    let R_Score = 0; 
-    let W_Score = 0; 
-    let Grand_Total = 0; 
-    let answerRaw = {}; // 存储学生作答原始记录
-
-    QUIZ_DATA.forEach(q => {
-        const questionId = q.Question_ID;
-        const correctAnswer = CORRECT_ANSWERS[questionId];
-        const selectedAnswer = form.elements[questionId] ? form.elements[questionId].value : null;
-
-        // 记录作答
-        answerRaw[questionId] = selectedAnswer;
-
-        if (selectedAnswer === correctAnswer && selectedAnswer !== null) { // 增加 null 检查，确保用户有选择
-            Grand_Total += SCORE_PER_QUESTION;
-            
-            // 根据 Part 字段划分细分分数
-            if (q.Part === 'L') { 
-                L_Score += SCORE_PER_QUESTION;
-            } else if (q.Part === 'R') { 
-                R_Score += SCORE_PER_QUESTION;
-            } else if (q.Part === 'W') { 
-                W_Score += SCORE_PER_QUESTION;
-            }
-        }
-    });
-
-    // 2. 准备发送给 Make.com 的数据
-    const dataToSend = {
-        Lesson_ID: lessonID,
-        Student_ID: studentId,
-        Answer_Raw: answerRawText, // 发送简答/作文原文
-        L_Score: L_Score,
-        R_Score: R_Score,
-        W_Score: W_Score,
-        S_Score: 0, // 口语模块暂不计分
-        Grand_Total: Grand_Total
-    };
-
-    // 3. 锁定表单并发送数据
-    const submitButton = document.querySelector('button[type="submit"]');
-    submitButton.textContent = '正在提交...';
-    submitButton.disabled = true;
-
-    fetch(WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dataToSend)
-    })
-    .then(response => {
-        if (response.ok) {
-            alert(`✅ 提交成功！客观题得分：${Grand_Total} 分。数据已归档到 Make.com。`);
-            submitButton.textContent = '提交成功';
-        } else {
-            alert("❌ 提交失败，请检查 Make.com Webhook 或网络。");
-            submitButton.textContent = '提交失败';
-        }
-    })
-    .catch(error => {
-        console.error('发送过程中发生错误:', error);
-        alert('❌ 发送过程中发生错误，请联系管理员。');
-        submitButton.textContent = '提交失败';
-    });
-}
-
-
-// 启动函数：页面加载时执行
-window.onload = function() {
-    loadQuizData();
-};
