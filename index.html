@@ -5,8 +5,9 @@ const SHEET_ID = '1fov6b9Py6GtdUCOAe0-VjrzI-yYxuKWEIuf0_ouzqH8';
 const WEBHOOK_URL = "https://hook.eu1.make.com/5nx5elyzjbbi8hujod7f4s6whmgthqc5"; 
 const GID = '0'; // 通常是第一个工作表的 ID
 
-// *** 核心修复：使用更可靠的 /export 链接格式 ***
-const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+// *** 核心修复：从 GitHub 本地加载 CSV 文件，解决跨域问题 ***
+// 请确保在 GitHub 根目录上传了一个名为 quiz_data.csv 的文件！
+const GOOGLE_SHEET_URL = 'quiz_data.csv'; 
 
 // 全局变量用于存储加载的题目数据和正确答案
 let QUIZ_DATA = [];
@@ -14,7 +15,7 @@ let CORRECT_ANSWERS = {};
 const SCORE_PER_QUESTION = 5; // 每题 5 分
 
 // ----------------------------------------------------
-// 核心函数 - 加载并解析 Google Sheet 数据 
+// 核心函数 - 加载并解析 CSV 数据 
 // ----------------------------------------------------
 async function loadQuizData() {
     const quizForm = document.getElementById('quizForm');
@@ -26,7 +27,14 @@ async function loadQuizData() {
     quizForm.innerHTML = ''; // 清空原有硬编码题目
 
     try {
-        const response = await fetch(GOOGLE_SHEET_URL);
+        // 使用本地链接加载文件
+        const response = await fetch(GOOGLE_SHEET_URL); 
+        
+        // 检查文件加载是否成功 (Status 200)
+        if (!response.ok) {
+             throw new Error(`Failed to load ${GOOGLE_SHEET_URL}. Status: ${response.status}`);
+        }
+        
         const csvText = await response.text();
         
         // 核心优化：更严格的 CSV 解析和清理
@@ -70,8 +78,8 @@ async function loadQuizData() {
         startBtn.disabled = false;
         
     } catch (error) {
-        console.error('Error loading quiz data from Google Sheet:', error);
-        quizForm.innerHTML = '<p style="color: red;">❌ 无法加载题库，请检查 Google Sheet 数据或链接/权限。</p>';
+        console.error('Error loading quiz data:', error);
+        quizForm.innerHTML = `<p style="color: red;">❌ 无法加载题库，请检查 quiz_data.csv 文件或网络。</p>`;
         startBtn.textContent = '加载失败';
     }
 }
