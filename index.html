@@ -1,211 +1,207 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Unit 1 Lesson 4 — Have a good day!｜课堂微练</title>
-  <style>
-    :root {
-      --bg: #f7f7fb;
-      --card: #ffffff;
-      --ink: #1f2937;
-      --muted: #6b7280;
-      --brand: #2563eb;
-      --ok: #10b981;
-      --bad: #ef4444;
-      --warn: #f59e0b;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
-    .wrap { max-width: 920px; margin: 24px auto; padding: 20px; }
-    .card { background: var(--card); border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,.08); padding: 20px; margin: 14px 0; }
-    h1 { font-size: 28px; margin: 0 0 6px; }
-    .row { display: flex; gap: 12px; flex-wrap: wrap; }
-    .field { flex: 1; min-width: 220px; }
-    input[type=text], select { width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 16px; }
-    button { border: 0; background: var(--brand); color: #fff; padding: 10px 16px; border-radius: 12px; font-weight: 600; cursor: pointer; }
-    button[disabled] { opacity: .5; cursor: not-allowed; }
-    .optgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-    .opt { border: 2px solid #e5e7eb; border-radius: 12px; padding: 12px; cursor: pointer; background: #fff; }
-    .opt.selected { border-color: var(--brand); box-shadow: 0 0 0 4px rgba(37,99,235,.12); }
-    .blank { display: inline-flex; align-items: center; justify-content: center; min-width: 56px; min-height: 32px; border: 2px solid #cbd5e1; background: #fff; border-radius: 8px; padding: 4px 6px; font-size: 16px; font-weight: 500; cursor: pointer; }
-    /* Modal Styles */
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); align-items: center; justify-content: center; padding: 20px; }
-    .modal-content { background: #fff; padding: 20px; border-radius: 12px; max-width: 800px; width: 100%; }
-    .modal-content h2 { margin-top: 0; }
-    .close-btn { position: absolute; top: 10px; right: 10px; font-size: 24px; cursor: pointer; }
+// 🔑 步骤 1: 定义 Google Sheet 链接和配置
+// 您的“测验题库” Google Sheet ID
+const SHEET_ID = '1fov6b9Py6GtdUCOAe0-VjrzI-yYxuKWEIuf0_ouzqH8'; 
+// 您的 Make.com Webhook URL
+const WEBHOOK_URL = "https://hook.eu1.make.com/5nx5elyzjbbi8hujod7f4s6whmgthqc5"; 
+const GID = '0'; // 通常是第一个工作表的 ID
+const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`;
 
-        /* 新增的样式 */
-        .lesson-id-input { margin-bottom: 20px; padding: 15px; border: 1px dashed #ccc; border-radius: 8px; }
-        .lesson-id-input input[type=text] { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #7957D5; border-radius: 4px; box-sizing: border-box; font-weight: bold; }
-    </style>
-    <meta charset="UTF-8">
-    <title>AI 自动评语测验</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7f6; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h1 { color: #5B4FBB; text-align: center; }
-        .question { margin-bottom: 20px; border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        textarea, input[type="number"] { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #7957D5; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #6C4DB7; }
-        #message { margin-top: 15px; padding: 10px; border-radius: 4px; }
-        .success { background-color: #D4EDDA; color: #155724; border: 1px solid #C3E6CB; }
-        .error { background-color: #F8D7DA; color: #721C24; border: 1px solid #F5C6CB; }
-    </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="card">
-      <h1>U1 Lesson 4 — Have a good day! <span class="pill">微练</span></h1>
-      <div class="muted">请选择你的名字 → 点击“开始练习”</div>
-      <div class="row" style="margin-top:10px">
-        <div class="field">
-          <label>名字（请点选）</label>
-          <select id="studentId">
-            <option value="">请选择</option>
-            <option value="S01_张宇豪">01 张宇豪</option>
-            <option value="S02_张佳寒">02 张佳寒</option>
-            <option value="S03_张睿渊">03 张睿渊</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>限时（分钟）</label>
-          <select id="limitMin">
-            <option>5</option>
-            <option selected>9</option>
-            <option>10</option>
-          </select>
-        </div>
-      </div>
-      <div style="margin-top:10px; display:flex; gap:10px; align-items:center">
-        <button id="startBtn">开始练习</button>
-        <div class="muted timer" id="timer">未开始</div>
-        <div class="muted">题量：<span id="qCount">0</span></div>
-                <button id="previewBtn" style="position: absolute; top: 10px; right: 10px;">预览</button>
-      </div>
-    </div>
-    <div class="container">
-        <h1>U1 L1 Nice to meet you 在线测试</h1>
-        
-                <div class="lesson-id-input">
-            <label for="lessonID_input" style="font-weight: bold;">🔑 课程/周次 ID (AI 分析归档用):</label>
-            <input type="text" id="lessonID_input" value="请填写唯一的ID，例如: U1L1_20251116">
-        </div>
-                <form id="quizForm">
-            
-            <h2>Part 2: 圈出不同类 (每题1分)</h2>
-            <div class="question" data-id="P2Q1">
-                <p>1. A. Mr. &nbsp;&nbsp;&nbsp;&nbsp; B. Sally &nbsp;&nbsp;&nbsp;&nbsp; C. Miss</p>
-                <label><input type="radio" name="P2Q1" value="A"> A</label>
-                <label><input type="radio" name="P2Q1" value="B"> B</label>
-                <label><input type="radio" name="P2Q1" value="C"> C</label>
-            </div>
-            
-            <div class="question" data-id="P2Q3">
-                <p>2. A. I &nbsp;&nbsp;&nbsp;&nbsp; B. am &nbsp;&nbsp;&nbsp;&nbsp; C. you</p>
-                <label><input type="radio" name="P2Q3" value="A"> A</label>
-                <label><input type="radio" name="P2Q3" value="B"> B</label>
-                <label><input type="radio" name="P2Q3" value="C"> C</label>
-            </div>
+// 全局变量用于存储加载的题目数据和正确答案
+let QUIZ_DATA = [];
+let CORRECT_ANSWERS = {};
+const SCORE_PER_QUESTION = 5; // 根据您的测验结构，每题 5 分
 
-        <div id="quiz"></div>
-            <h2>Part 3: 情景交际 (每题1分)</h2>
-            <div class="question" data-id="P3Q1">
-                <p>3. 听到 “Nice to meet you.” 我们应当说 (         )</p>
-                <label><input type="radio" name="P3Q1" value="A"> A. Nice to meet you, too.</label>
-                <label><input type="radio" name="P3Q1" value="B"> B. I’m banana.</label>
-            </div>
+// ----------------------------------------------------
+// 核心函数 - 加载并解析 Google Sheet 数据
+// ----------------------------------------------------
+async function loadQuizData() {
+    const quizForm = document.getElementById('quizForm');
+    const startBtn = document.getElementById('startBtn');
+    
+    // 禁用按钮并显示加载状态
+    startBtn.disabled = true;
+    startBtn.textContent = '加载题库中...';
+    quizForm.innerHTML = ''; // 清空原有硬编码题目
 
-        <div id="finish" class="card" style="display:none">
-      <h2>💡 结果</h2>
-      <p>
-        总分：<b id="score"></b> / <span id="scoreMax"></span>
-        （正确 <span id="right"></span> 题 / 共 <span id="total"></span> 题）
-      </p>
-      <div id="heat"></div>
-      <div class="footer" style="margin-top:12px">
-        <button id="exportCsv">导出本次结果 CSV</button>
-        <button id="retry">重新作答</button>
-      </div>
-    </div>
-    
-        <div id="previewModal" class="modal">
-      <div class="modal-content">
-        <span class="close-btn" id="closePreview">&times;</span>
-        <h2>预览 - 当前生成的练习题</h2>
-        <div id="previewQuiz"></div>
-        <button id="startQuizPreview">开始答题</button>
-      </div>
-            <div class="question" data-id="P3Q2">
-                <p>4. 王涛想向新同学介绍自己时，他应该说 (         )</p>
-                <label><input type="radio" name="P3Q2" value="A"> A. Hello, I’m Wang Tao.</label>
-                <label><input type="radio" name="P3Q2" value="B"> B. I’m Wang Tao</label>
-            </div>
-            
-            <label for="answer_raw">📝 简答/作文 (AI评语的依据):</label>
-            <textarea id="answer_raw" name="Answer_Raw" rows="4" placeholder="例如：我觉得这些题很简单，全部都做对了。" required></textarea>
+    try {
+        const response = await fetch(GOOGLE_SHEET_URL);
+        const csvText = await response.text();
+        
+        // 解析 CSV 数据
+        const lines = csvText.trim().split('\n');
+        // CSV 数据可能包含引号和空格，我们需要清理列名
+        const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+        
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+            const question = {};
+            
+            for (let j = 0; j < headers.length; j++) {
+                question[headers[j]] = values[j] || ''; // 确保空值处理
+            }
+            
+            // 只有包含 Question_ID 的有效行才被视为题目
+            if (question.Question_ID) {
+                QUIZ_DATA.push(question);
+                CORRECT_ANSWERS[question.Question_ID] = question.Correct_Answer;
+            }
+        }
+        
+        // 渲染题目并更新 UI
+        renderQuiz();
+        document.getElementById('qCount').textContent = QUIZ_DATA.length;
+        startBtn.textContent = '开始练习';
+        startBtn.disabled = false;
+        
+    } catch (error) {
+        console.error('Error loading quiz data from Google Sheet:', error);
+        quizForm.innerHTML = '<p style="color: red;">❌ 无法加载题库，请检查 Google Sheet 链接和权限。</p>';
+        startBtn.textContent = '加载失败';
+    }
+}
 
-            <button type="submit">提交并获取 AI 评语</button>
-        </form>
-        
-        <div id="result"></div>
-        <p id="message"></p>
-</div>
-  </div>
+// ----------------------------------------------------
+// 渲染题目到 HTML 页面
+// ----------------------------------------------------
+function renderQuiz() {
+    const quizForm = document.getElementById('quizForm');
+    quizForm.innerHTML = ''; // 确保清空了所有的硬编码题目
 
-  <script>
-    var bank = [
-      { id: 'Q1', phase: '理解', score: 2, type: 'single-choice', zh: '选择最合适的问候语：', options: [{ key: 'A', label: 'Good morning, Li Li!' }, { key: 'B', label: 'Goodbye, Li Li!' }, { key: 'C', label: 'How are you, Li Li?' }], answer: 'A' },
-      { id: 'Q2', phase: '理解', score: 2, type: 'single-choice', zh: '选择最合适的告别语：', options: [{ key: 'A', label: 'Good morning!' }, { key: 'B', label: 'Goodbye, see you tomorrow!' }, { key: 'C', label: 'How are you?' }], answer: 'B' },
-      { id: 'Q3', phase: '理解', score: 2, type: 'cloze', zh: '填空：I’m ________, thank you!', tokens: ['fine', 'good', 'bad'], blanks: ['fine'], answer: 'fine' },
-      { id: 'Q4', phase: '理解', score: 3, type: 'bank-build', zh: '翻译成英文：“再见，李莉。”', tokens: ['Goodbye', 'Li', 'Li', '.'], blanks: ['Goodbye', 'Li', 'Li', '.'], answer: 'Goodbye, Li Li.' }
-    ];
-    
-        // ******************* 您的 Make.com Webhook URL *******************
-        const WEBHOOK_URL = "https://hook.eu1.make.com/5nx5elyzjbbi8hujod7f4s6whmgthqc5"; // 请确保这里是您最新的 URL
-        // *******************************************************************
+    let htmlContent = '';
+    let currentPart = ''; 
 
-    // 题目渲染逻辑
-    function render() {
-      let quizContainer = document.getElementById('quiz');
-      quizContainer.innerHTML = '';
-      bank.forEach(function (q, i) {
-        var card = document.createElement('div');
-        card.className = 'card';
-        var title = '<h2>' + (i + 1) + '. ' + (q.zh || q.en || '') + '</h2>';
-        card.innerHTML = title + buildQuestion(q);
-        quizContainer.appendChild(card);
-      });
-      document.getElementById('qCount').textContent = bank.length;
-    }
-        // 自动判分的逻辑核心：正确答案
-        const CORRECT_ANSWERS = { 'P2Q1': 'B', 'P2Q3': 'B', 'P3Q1': 'A', 'P3Q2': 'A' }; // 键：题目ID，值：正确选项
-        const MAX_SCORE = Object.keys(CORRECT_ANSWERS).length; // 理论最高分 (4题 x 1分/题)
+    QUIZ_DATA.forEach((q, index) => {
+        // 如果 Part 字段改变，添加新的模块标题 (L/R/W)
+        if (q.Part && q.Part !== currentPart) {
+            currentPart = q.Part;
+            // 假设 Part 字段就是 L, R, W
+            const partMap = { 'L': '听力 (Listening)', 'R': '阅读 (Reading)', 'W': '写作 (Writing)', 'S': '口语 (Speaking)' };
+            htmlContent += `<h2>Part ${q.Part}: ${partMap[q.Part] || q.Part} 模块 (每题 ${SCORE_PER_QUESTION} 分)</h2><hr>`;
+        }
 
-    // 渲染问题内容
-    function buildQuestion(q) {
-      var html = '';
-      if (q.type === 'single-choice') {
-        html = '<div>' + q.zh + '</div>';
-        q.options.forEach(function (option) {
-          html += `<div class="opt" data-id="${q.id}" data-value="${option.key}">${option.key}. ${option.label}</div>`;
-        });
-      } else if (q.type === 'cloze') {
-        html = `<div>${q.zh}</div><div class="blank" data-id="${q.id}"></div>`;
-        q.tokens.forEach(function (token) {
-          html += `<span class="token" data-id="${q.id}" data-token="${token}">${token}</span>`;
-          
-        // --- 🚀 提交事件处理函数修改 - START ---
-        document.getElementById('quizForm').addEventListener('submit', function(event) {
-            event.preventDefault(); 
-            const form = event.target;
-            const messageBox = document.getElementById('message');
-            const resultDiv = document.getElementById('result');
-            
-            // 0. 🔑 获取 Lesson ID 并进行检查 (新增代码)
-            const lessonID = document.getElementById('lessonID_input').value.trim();
-            
-            if (!lessonID || lessonID.includes('请填写')) {
-                alert('❌ 请填写唯一的课程/周次 ID，这是 AI 归档的关键！
+        // 题干 (Question Text)
+        htmlContent += `<div class="question" data-id="${q.Question_ID}">`;
+        htmlContent += `<p>${index + 1}. ${q.Question_Text}</p>`;
+        
+        // 渲染选项 (Option 1 到 Option 5)
+        for (let i = 1; i <= 5; i++) {
+            const optionKey = `Option_${i}`;
+            const optionValue = q[optionKey];
+            
+            if (optionValue && optionValue.trim() !== '') {
+                // 使用选项编号 (i) 作为 value
+                htmlContent += `<label><input type="radio" name="${q.Question_ID}" value="${i}"> ${optionValue}</label><br>`;
+            }
+        }
+        htmlContent += `</div>`;
+    });
+
+    // 渲染动态生成的题目
+    quizForm.innerHTML = htmlContent;
+
+    // 添加固定的简答题和提交按钮
+    quizForm.innerHTML += `
+        <label for="answer_raw">📝 简答/作文 (AI评语的依据):</label>
+        <textarea id="answer_raw" name="Answer_Raw" rows="4" placeholder="例如：我觉得这些题很简单，全部都做对了。" required></textarea>
+        <button type="submit">提交并归档成绩</button>
+    `;
+    
+    // 重新绑定提交事件
+    document.getElementById('quizForm').addEventListener('submit', handleSubmit);
+}
+
+
+// ----------------------------------------------------
+// 提交事件处理函数
+// ----------------------------------------------------
+function handleSubmit(event) {
+    event.preventDefault(); 
+
+    const form = event.target;
+    const lessonID = document.getElementById('lessonID_input').value.trim();
+    const studentId = document.getElementById('studentId').value;
+    const answerRawText = document.getElementById('answer_raw').value;
+
+    // 0. 关键数据检查
+    if (!lessonID || lessonID.includes('请填写')) {
+        return alert('❌ 请填写唯一的课程/周次 ID，这是 AI 归档的关键！');
+    }
+    if (!studentId) {
+        return alert('❌ 请选择你的名字！');
+    }
+
+    // 1. 自动判客观题得分 - 细分到 L/R/W
+    let L_Score = 0; 
+    let R_Score = 0; 
+    let W_Score = 0; 
+    let Grand_Total = 0; 
+    let answerRaw = {}; // 存储学生作答原始记录
+
+    QUIZ_DATA.forEach(q => {
+        const questionId = q.Question_ID;
+        const correctAnswer = CORRECT_ANSWERS[questionId];
+        const selectedAnswer = form.elements[questionId] ? form.elements[questionId].value : null;
+
+        // 记录作答
+        answerRaw[questionId] = selectedAnswer;
+
+        if (selectedAnswer === correctAnswer) {
+            Grand_Total += SCORE_PER_QUESTION;
+            
+            // 根据 Part 字段划分细分分数
+            if (q.Part === 'L') { 
+                L_Score += SCORE_PER_QUESTION;
+            } else if (q.Part === 'R') { 
+                R_Score += SCORE_PER_QUESTION;
+            } else if (q.Part === 'W') { 
+                W_Score += SCORE_PER_QUESTION;
+            }
+        }
+    });
+
+    // 2. 准备发送给 Make.com 的数据
+    const dataToSend = {
+        Lesson_ID: lessonID,
+        Student_ID: studentId,
+        Answer_Raw: answerRawText, // 发送简答/作文原文
+        L_Score: L_Score,
+        R_Score: R_Score,
+        W_Score: W_Score,
+        S_Score: 0, // 口语模块暂不计分
+        Grand_Total: Grand_Total
+    };
+
+    // 3. 锁定表单并发送数据
+    document.querySelector('button[type="submit"]').textContent = '正在提交...';
+    document.querySelector('button[type="submit"]').disabled = true;
+
+    fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dataToSend)
+    })
+    .then(response => {
+        if (response.ok) {
+            alert(`✅ 提交成功！客观题得分：${Grand_Total} 分。数据已归档到 Make.com。`);
+            document.querySelector('button[type="submit"]').textContent = '提交成功';
+        } else {
+            alert("❌ 提交失败，请检查 Make.com Webhook 或网络。");
+            document.querySelector('button[type="submit"]').textContent = '提交失败';
+        }
+    })
+    .catch(error => {
+        console.error('发送过程中发生错误:', error);
+        alert('❌ 发送过程中发生错误，请联系管理员。');
+        document.querySelector('button[type="submit"]').textContent = '提交失败';
+    });
+}
+
+
+// 启动函数：页面加载时执行
+window.onload = function() {
+    loadQuizData();
+    // 监听开始按钮 (如果需要计时功能，可以扩展 startBtn 的点击事件)
+    // document.getElementById('startBtn').addEventListener('click', loadQuizData);
+};
