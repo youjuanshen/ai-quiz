@@ -1,85 +1,41 @@
-// 步骤 1：定义常量 - 改为加载本地的 quiz_data.csv 文件
-// 确保 quiz_data.csv 文件已上传到 GitHub 仓库根目录
-const GOOGLE_SHEET_URL = 'quiz_data.csv'; 
+<!-- =======================
+     Part 1 – Listening
+======================= -->
+<div class="section" id="listening-section">
+  <h3>Part 1 – Listening 听力（25 分）</h3>
 
-// 常量保持不变 (例如：您的 Webhook URL, 分数设定)
-// const WEBHOOK_URL = 'https://hook.eu1.make.com/...';
-const SCORE_PER_QUESTION = 5; // 每题 5 分
+  <!-- ===== Listening Q1 ===== -->
+  <div class="question" id="L1">
+    <div class="question-title">听力第 1 题（5 分）：听音选图</div>
+    <div class="instruction">点击播放按钮听录音，每题播放两遍。</div>
 
+    <!-- 播放按钮 -->
+    <button type="button" onclick="playTTS('Good afternoon.')">▶ Play</button>
 
-// ----------------------------------------------------
-// 核心函数 - 加载并解析 CSV 数据 (增强容错版) 
-// ----------------------------------------------------
-async function loadQuizData() {
-    const quizForm = document.getElementById('quizForm');
-    const startBtn = document.getElementById('startBtn');
-    
-    startBtn.disabled = true;
-    startBtn.textContent = '加载题库中...';
-    quizForm.innerHTML = ''; 
+    <div class="options">
+      <label><input type="radio" name="L1" value="A"> A. 早晨，两人见面说话。</label>
+      <label><input type="radio" name="L1" value="B"> B. 下午，LiLi 在路上遇到老师。</label>
+      <label><input type="radio" name="L1" value="C"> C. 晚上睡觉前说话。</label>
+    </div>
+  </div>
 
-    try {
-        // 使用本地链接加载文件
-        const response = await fetch(GOOGLE_SHEET_URL); 
-        
-        if (!response.ok) {
-             // 如果文件加载失败 (例如 404)，抛出错误
-             throw new Error(`Failed to load ${GOOGLE_SHEET_URL}. Status: ${response.status}`);
-        }
-        
-        const csvText = await response.text();
-        
-        // 核心优化：使用更健壮的解析逻辑
-        // 1. .trim() 移除首尾空白
-        // 2. .split('\n') 分割行
-        // 3. .filter(line => line.trim().length > 0) 彻底移除空行
-        const lines = csvText.trim().split('\n').filter(line => line.trim().length > 0); 
-        
-        // 1. 清理并标准化 Headers (列名)
-        const headers = lines[0].split(',')
-            .map(h => h.replace(/"/g, '').trim()) // 移除引号和空格
-            .filter(h => h.length > 0); 
+  <!-- ===== Listening Q2 ===== -->
+  <div class="question" id="L2">
+    <div class="question-title">听力第 2 题（5 分）：听问候选答句</div>
+    <button type="button" onclick="playTTS('Have a good day!')">▶ Play</button>
 
-        if (lines.length <= 1 || headers.length < 5) {
-             throw new Error('CSV data is empty or malformed.');
-        }
+    <div class="options">
+      <label><input type="radio" name="L2" value="A"> A. How are you?</label>
+      <label><input type="radio" name="L2" value="B"> B. Thank you, you too!</label>
+      <label><input type="radio" name="L2" value="C"> C. Goodbye!</label>
+    </div>
+  </div>
 
-        // 清空旧数据
-        QUIZ_DATA = []; 
-        CORRECT_ANSWERS = {};
-        
-        for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',');
-            const question = {};
-            
-            for (let j = 0; j < headers.length; j++) {
-                // 2. 清理并映射 Values
-                // 确保即使数据行末尾有多余逗号或空值，也能安全处理
-                question[headers[j]] = (values[j] || '').replace(/"/g, '').trim(); 
-            }
-            
-            // 只有包含 Question_ID 的有效行才被视为题目
-            if (question.Question_ID && question.Question_ID.length > 0) {
-                QUIZ_DATA.push(question);
-                CORRECT_ANSWERS[question.Question_ID] = question.Correct_Answer;
-            }
-        }
-        
-        // 如果没有加载到任何有效题目，也视为失败
-        if (QUIZ_DATA.length === 0) {
-             throw new Error('No valid questions found in the sheet data.');
-        }
+  <!-- ===== Listening Q3 ===== -->
+  <div class="question" id="L3">
+    <div class="question-title">听力第 3 题（5 分）：情景判断 T / F</div>
+    <button type="button" onclick="playTTS('Goodbye, Li Li. Have a good day!')">▶ Play</button>
 
-        // 渲染题目并更新 UI
-        renderQuiz();
-        document.getElementById('qCount').textContent = QUIZ_DATA.length;
-        startBtn.textContent = '开始练习';
-        startBtn.disabled = false;
-        
-    } catch (error) {
-        console.error('Error loading quiz data:', error);
-        // 显示明确的错误信息
-        quizForm.innerHTML = `<p style="color: red;">❌ 无法加载题库，请确认 'quiz_data.csv' 文件已上传且格式正确。</p>`;
-        startBtn.textContent = '加载失败';
-    }
-}
+    <div class="options">
+      <label><input type="radio" name="L3" value="T"> T. 相符</label>
+      <label><input type="radio" name="L3" value="F"> F. 不相符</label>
