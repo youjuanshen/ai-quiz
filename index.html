@@ -2,118 +2,106 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>English Quiz App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>English Adventure (iOS 12 Safe)</title>
     
+    <!-- 1. POLYFILLS (Crucial for iOS 12 / Safari 12) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/core-js/3.33.2/minified.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/regenerator-runtime/0.14.0/runtime.min.js"></script>
+
+    <!-- 2. Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <style>
-        /* 解决旧版webkit内核的flexbox兼容性问题 */
-        .flex { display: -webkit-box; display: -webkit-flex; display: flex; }
-        .items-center { -webkit-box-align: center; -webkit-align-items: center; align-items: center; }
-        .justify-center { -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center; }
-        .flex-col { -webkit-box-orient: vertical; -webkit-box-direction: normal; -webkit-flex-direction: column; flex-direction: column; }
-        .safe-top { padding-top: constant(safe-area-inset-top); padding-top: env(safe-area-inset-top); }
-        .safe-bottom { padding-bottom: constant(safe-area-inset-bottom); padding-bottom: env(safe-area-inset-bottom); }
-
-        /* Base Reset */
-        body { 
-            background-color: #f8fafc; 
-            overflow: hidden; 
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            -webkit-tap-highlight-color: transparent;
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['-apple-system', 'Helvetica Neue', 'sans-serif'] },
+                    boxShadow: {
+                        'glow': '0 0 15px rgba(59, 130, 246, 0.5)',
+                    }
+                }
+            }
         }
-        .select-none { user-select: none; -webkit-user-select: none; }
-        
-        /* Custom Animations */
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-        .animate-shake { animation: shake 0.4s ease-in-out; }
-
-        @keyframes pop {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
-        .animate-pop { animation: pop 0.2s ease-out; }
-
-        /* Responsive scrollbars */
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
+    </script>
     
-    <script src="https://unpkg.com/core-js-bundle@3.37.0/minified.js"></script>
-    
+    <!-- 3. React 16 (Most stable for older WebKit) -->
     <script crossorigin src="https://unpkg.com/react@16.14.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@16.14.0/umd/react-dom.production.min.js"></script>
     
-    <script src="https://unpkg.com/@babel/standalone@7.15.0/babel.min.js"></script>
+    <!-- 4. Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        /* Base Reset & iOS Specifics */
+        body { 
+            background-color: #f8fafc; 
+            overflow: hidden; 
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            touch-action: pan-y;
+        }
+        .select-none { user-select: none; -webkit-user-select: none; }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        .safe-top { padding-top: env(safe-area-inset-top); }
+        
+        /* Animations */
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        .animate-shake { animation: shake 0.4s ease-in-out; }
+        
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .animate-pop { animation: pop 0.2s ease-out; }
+
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .canvas-container { touch-action: none; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0"
+  }
+}
+</script>
 </head>
-<body class="select-none touch-none text-slate-800">
+<body class="select-none text-slate-800">
     <div id="root"></div>
 
     <script type="text/babel">
-        // ---------------------------------------------
-        // **注意：所有箭头函数和解构赋值都已保留，
-        // 依赖 Babel Standalone 7.15.0 和 core-js 进行转译和 Polyfill**
-        // ---------------------------------------------
-
         const { useState, useEffect, useRef } = React;
 
-        // --- ICONS (避免使用 ES6 默认参数，增加兼容性) ---
-        // 注意：这里的图标组件依然存在，但在关键位置（如爱心显示）已替换为纯文本，避免CSS兼容性问题。
-        const IconVolume = (props) => {
-            const className = props.className;
-            return (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" /></svg>);
-        };
-        const IconCheck = (props) => {
-            const className = props.className;
-            return (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12" /></svg>);
-        };
-        const IconX = (props) => {
-            const className = props.className;
-            return (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>);
-        };
-        const IconHeart = (props) => {
-            const className = props.className;
-            return (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none" className={className}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg>);
-        };
-        const IconArrowLeft = (props) => {
-            const className = props.className;
-            return (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>);
-        };
-        const IconEraser = (props) => {
-            const className = props.className;
-            return (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" /><path d="M22 21H7" /><path d="m5 11 9 9" /></svg>);
-        };
-        const IconHome = (props) => {
-            const className = props.className;
-            return (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>);
-        };
-        const IconFlame = (props) => {
-            const className = props.className;
-            return (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.1.2-2.2.5-3.3.3-1.09.91-2.1 1.65-2.95a2.5 2.5 0 0 0 .35 2.75Z"/></svg>);
-        };
+        // --- ICONS (SVG) ---
+        // We define them here to avoid import errors
+        const IconVolume = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" /></svg>;
+        const IconCheck = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12" /></svg>;
+        const IconX = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
+        const IconHeart = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none" className={className}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg>;
+        const IconArrowLeft = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>;
+        const IconEraser = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" /><path d="M22 21H7" /><path d="m5 11 9 9" /></svg>;
+        const IconHome = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+        const IconFlame = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.1.2-2.2.5-3.3.3-1.09.91-2.1 1.65-2.95a2.5 2.5 0 0 0 .35 2.75Z"/></svg>;
 
-        // --- GAME DATA ---
+        // --- DATA ---
+        // Hardcoded data so no external files are needed
         const TRAFFIC_LEVELS = [
             { id: 'a1', type: 'color_reaction', prompt: "Tap the correct color!", commandText: "The light is red.", targetColor: 'red', audioPrompt: "The light is red." },
-            { id: 'a2', type: 'picture_choice', prompt: "What does this mean?", iconType: 'green_light', options: [{id:'o1', text:"Look! It's green now.", isCorrect:true}, {id:'o2', text:"Stop! Red light.", isCorrect:false}, {id:'o3', text:"Good morning.", isCorrect:false}].sort(function() { return Math.random() - 0.5; }) },
-            { id: 'a3', type: 'build', targetSentence: "Let’s go to school.", chinese: "我们去学校吧。", words: ["Let’s", "go", "to", "school.", "stop"].sort(function() { return Math.random() - 0.5; }) },
+            { id: 'a2', type: 'picture_choice', prompt: "What does this mean?", iconType: 'green_light', options: [{id:'o1', text:"Look! It's green now.", isCorrect:true}, {id:'o2', text:"Stop! Red light.", isCorrect:false}, {id:'o3', text:"Good morning.", isCorrect:false}].sort(() => Math.random() - 0.5) },
+            { id: 'a3', type: 'build', targetSentence: "Let’s go to school.", chinese: "我们去学校吧。", words: ["Let’s", "go", "to", "school.", "stop"].sort(() => Math.random() - 0.5) },
             { id: 'a4', type: 'color_reaction', prompt: "Fast!", commandText: "Let's go!", targetColor: 'green', audioPrompt: "Let's go!" },
-            { id: 'a5', type: 'match_pairs', prompt: "Match English and Chinese", pairs: [{id:'p1a', text:"Good morning.", lang:'en', pairId:'p1'}, {id:'p1b', text:"早上好。", lang:'cn', pairId:'p1'}, {id:'p2a', text:"Stop!", lang:'en', pairId:'p2'}, {id:'p2b', text:"停！", lang:'cn', pairId:'p2'}, {id:'p3a', text:"It's green now.", lang:'en', pairId:'p3'}, {id:'p3b', text:"现在是绿灯了。", lang:'cn', pairId:'p3'}].sort(function() { return Math.random() - 0.5; }) },
-            { id: 'a6', type: 'build', targetSentence: "The light is red.", chinese: "红灯亮了。", words: ["The", "light", "is", "red.", "green"].sort(function() { return Math.random() - 0.5; }) }
+            { id: 'a5', type: 'match_pairs', prompt: "Match English and Chinese", pairs: [{id:'p1a', text:"Good morning.", lang:'en', pairId:'p1'}, {id:'p1b', text:"早上好。", lang:'cn', pairId:'p1'}, {id:'p2a', text:"Stop!", lang:'en', pairId:'p2'}, {id:'p2b', text:"停！", lang:'cn', pairId:'p2'}, {id:'p3a', text:"It's green now.", lang:'en', pairId:'p3'}, {id:'p3b', text:"现在是绿灯了。", lang:'cn', pairId:'p3'}].sort(() => Math.random() - 0.5) },
+            { id: 'a6', type: 'build', targetSentence: "The light is red.", chinese: "红灯亮了。", words: ["The", "light", "is", "red.", "green"].sort(() => Math.random() - 0.5) }
         ];
 
         const ALPHABET_LEVELS = [
-            { id: 'b1', type: 'audio_choice', prompt: "Which letter is Q?", audioText: "Find the letter Q.", options: [{id:'o1', text:"Q", isCorrect:true}, {id:'o2', text:"P", isCorrect:false}, {id:'o3', text:"O", isCorrect:false}].sort(function() { return Math.random() - 0.5; }) },
+            { id: 'b1', type: 'audio_choice', prompt: "Which letter is Q?", audioText: "Find the letter Q.", options: [{id:'o1', text:"Q", isCorrect:true}, {id:'o2', text:"P", isCorrect:false}, {id:'o3', text:"O", isCorrect:false}].sort(() => Math.random() - 0.5) },
             { id: 'b2', type: 'tracing', prompt: "Trace Uppercase Q", letter: "Q" },
-            { id: 'b3', type: 'match_pairs', prompt: "Match Big and Small", pairs: [{id:'p1a', text:"Q", lang:'en', pairId:'p1'}, {id:'p1b', text:"q", lang:'en', pairId:'p1'}, {id:'p2a', text:"R", lang:'en', pairId:'p2'}, {id:'p2b', text:"r", lang:'en', pairId:'p2'}, {id:'p3a', text:"rabbit", lang:'en', pairId:'p3'}, {id:'p3b', text:"🐰", lang:'image', pairId:'p3'}].sort(function() { return Math.random() - 0.5; }) },
-            { id: 'b9', type: 'build', targetSentence: "rabbit", chinese: "兔子", words: ["r", "a", "b", "b", "i", "t"].sort(function() { return Math.random() - 0.5; }) },
-            { id: 'b10', type: 'missing_letter', prompt: "Complete the word", displayWord: "_uestion", correctOption: "q", options: ["q", "p", "d"].sort(function() { return Math.random() - 0.5; }) }
+            { id: 'b3', type: 'match_pairs', prompt: "Match Big and Small", pairs: [{id:'p1a', text:"Q", lang:'en', pairId:'p1'}, {id:'p1b', text:"q", lang:'en', pairId:'p1'}, {id:'p2a', text:"R", lang:'en', pairId:'p2'}, {id:'p2b', text:"r", lang:'en', pairId:'p2'}, {id:'p3a', text:"rabbit", lang:'en', pairId:'p3'}, {id:'p3b', text:"🐰", lang:'image', pairId:'p3'}].sort(() => Math.random() - 0.5) },
+            { id: 'b4', type: 'tracing', prompt: "Trace Lowercase q", letter: "q" },
+            { id: 'b5', type: 'audio_choice', prompt: "Which letter makes this sound?", audioText: "/k/ /k/ /k/", options: [{id:'o1', text:"Q", isCorrect:true}, {id:'o2', text:"R", isCorrect:false}, {id:'o3', text:"S", isCorrect:false}].sort(() => Math.random() - 0.5) },
+            { id: 'b9', type: 'build', targetSentence: "rabbit", chinese: "兔子", words: ["r", "a", "b", "b", "i", "t"].sort(() => Math.random() - 0.5) },
+            { id: 'b10', type: 'missing_letter', prompt: "Complete the word", displayWord: "_uestion", correctOption: "q", options: ["q", "p", "d"].sort(() => Math.random() - 0.5) }
         ];
 
         const MODULES = [
@@ -121,14 +109,14 @@
             { id: 'mod_alpha', title: "Alphabet Q & R", description: "Qq, Rr, Rabbit", themeColor: "bg-purple-500", levels: ALPHABET_LEVELS }
         ];
 
-        // --- AUDIO ENGINE (使用了 var 而非 const 声明 window.AudioContext，更安全) ---
+        // --- AUDIO ENGINE ---
         const AudioEngine = {
-            playDing: function() {
-                var AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return; // Fallback if API not available
-                var ctx = new AudioContext();
-                var osc = ctx.createOscillator();
-                var gain = ctx.createGain();
+            playDing: () => {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
                 osc.connect(gain);
                 gain.connect(ctx.destination);
                 osc.type = 'sine';
@@ -139,12 +127,12 @@
                 osc.start();
                 osc.stop(ctx.currentTime + 0.3);
             },
-            playBoop: function() {
-                var AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return; // Fallback if API not available
-                var ctx = new AudioContext();
-                var osc = ctx.createOscillator();
-                var gain = ctx.createGain();
+            playBoop: () => {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
                 osc.connect(gain);
                 gain.connect(ctx.destination);
                 osc.type = 'triangle';
@@ -154,94 +142,57 @@
                 osc.start();
                 osc.stop(ctx.currentTime + 0.3);
             },
-            speak: function(text) {
+            speak: (text) => {
                 if (!window.speechSynthesis) return;
                 window.speechSynthesis.cancel();
-                var utterance = new SpeechSynthesisUtterance(text);
+                let speakText = text;
+                if (text.includes('/k/')) speakText = "The sound kuh"; 
+                const utterance = new SpeechSynthesisUtterance(speakText);
                 utterance.lang = 'en-US';
                 utterance.rate = 0.9;
                 window.speechSynthesis.speak(utterance);
             }
         };
 
-        // --- UI COMPONENTS ---
-        
-        const TrafficLightRed = function() {
-            return (
-                <div className="w-20 h-28 md:w-32 md:h-44 bg-slate-800 rounded-2xl flex flex-col items-center justify-center gap-2 p-2 border-4 border-slate-600 shadow-xl">
-                    <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-red-500 shadow-[0_0_20px_rgba(239,68,68,1)] animate-pulse" />
-                    <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-slate-700/50" />
-                    <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-slate-700/50" />
-                </div>
-            );
-        };
-        const TrafficLightGreen = function() {
-            return (
-                <div className="w-20 h-28 md:w-32 md:h-44 bg-slate-800 rounded-2xl flex flex-col items-center justify-center gap-2 p-2 border-4 border-slate-600 shadow-xl">
-                    <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-slate-700/50" />
-                    <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-slate-700/50" />
-                    <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-green-500 shadow-[0_0_20px_rgba(34,197,94,1)] animate-pulse" />
-                </div>
-            );
-        };
+        // --- COMPONENTS ---
+        const TrafficLightRed = () => (
+            <div className="w-20 h-28 md:w-32 md:h-44 bg-slate-800 rounded-2xl flex flex-col items-center justify-center p-2 border-4 border-slate-600 shadow-xl space-y-2">
+                <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-red-500 shadow-[0_0_20px_rgba(239,68,68,1)] animate-pulse" />
+                <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-slate-700/50" />
+                <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-slate-700/50" />
+            </div>
+        );
+        const TrafficLightGreen = () => (
+            <div className="w-20 h-28 md:w-32 md:h-44 bg-slate-800 rounded-2xl flex flex-col items-center justify-center p-2 border-4 border-slate-600 shadow-xl space-y-2">
+                <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-slate-700/50" />
+                <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-slate-700/50" />
+                <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-green-500 shadow-[0_0_20px_rgba(34,197,94,1)] animate-pulse" />
+            </div>
+        );
 
+        // --- MAIN APP ---
         function App() {
-            var state = useState('HOME');
-            var view = state[0];
-            var setView = state[1];
+            const [view, setView] = useState('HOME');
+            const [activeModule, setActiveModule] = useState(null);
+            const [levelIndex, setLevelIndex] = useState(0);
+            const [hearts, setHearts] = useState(5);
+            const [status, setStatus] = useState('idle');
+            const [progress, setProgress] = useState(0);
             
-            state = useState(null);
-            var activeModule = state[0];
-            var setActiveModule = state[1];
+            const [buildSelected, setBuildSelected] = useState([]);
+            const [buildBank, setBuildBank] = useState([]);
+            const [matchSolved, setMatchSolved] = useState([]);
+            const [matchSelected, setMatchSelected] = useState(null);
+            const [choiceSelected, setChoiceSelected] = useState(null);
+            const [canvasDrawn, setCanvasDrawn] = useState(false);
             
-            state = useState(0);
-            var levelIndex = state[0];
-            var setLevelIndex = state[1];
-            
-            state = useState(5);
-            var hearts = state[0];
-            var setHearts = state[1];
-            
-            state = useState('idle');
-            var status = state[0];
-            var setStatus = state[1];
-            
-            state = useState(0);
-            var progress = state[0];
-            var setProgress = state[1];
-            
-            // Level State
-            state = useState([]);
-            var buildSelected = state[0];
-            var setBuildSelected = state[1];
-            
-            state = useState([]);
-            var buildBank = state[0];
-            var setBuildBank = state[1];
-            
-            state = useState([]);
-            var matchSolved = state[0];
-            var setMatchSolved = state[1];
-            
-            state = useState(null);
-            var matchSelected = state[0];
-            var setMatchSelected = state[1];
-            
-            state = useState(null);
-            var choiceSelected = state[0];
-            var setChoiceSelected = state[1];
-            
-            state = useState(false);
-            var canvasDrawn = state[0];
-            var setCanvasDrawn = state[1];
-            
-            var canvasRef = useRef(null);
-            var isDrawing = useRef(false);
+            const canvasRef = useRef(null);
+            const isDrawing = useRef(false);
 
-            var currentLevel = activeModule ? activeModule.levels[levelIndex] : null;
+            // Safe Access for iOS 12 (avoid ?. operator)
+            const currentLevel = activeModule && activeModule.levels ? activeModule.levels[levelIndex] : null;
 
-            // Init Level
-            useEffect(function() {
+            useEffect(() => {
                 if (!currentLevel) return;
                 setStatus('idle');
                 setBuildSelected([]);
@@ -251,22 +202,29 @@
                 setCanvasDrawn(false);
                 
                 if (currentLevel.audioPrompt) {
-                    setTimeout(function() { AudioEngine.speak(currentLevel.audioPrompt); }, 500);
+                    setTimeout(() => AudioEngine.speak(currentLevel.audioPrompt), 500);
+                } else if (currentLevel.type === 'audio_choice') {
+                    setTimeout(() => AudioEngine.speak(currentLevel.audioText), 500);
                 }
                 
                 if (currentLevel.type === 'build') {
-                    setBuildBank(currentLevel.words.map(function(w, i) { return { id: i, text: w, used: false }; }));
+                    setBuildBank(currentLevel.words.map((w, i) => ({ id: i, text: w, used: false })));
                 }
             }, [levelIndex, currentLevel]);
 
-            // Auto Check Match
-            useEffect(function() {
-                if (currentLevel && currentLevel.type === 'match_pairs' && matchSolved.length === currentLevel.pairs.length && matchSolved.length > 0) {
-                    handleSuccess();
+            // Auto Check Match Pairs
+            useEffect(() => {
+                if (currentLevel && currentLevel.type === 'match_pairs') {
+                    if (matchSolved.length === currentLevel.pairs.length && matchSolved.length > 0) {
+                        handleSuccess();
+                    }
                 }
             }, [matchSolved]);
 
-            var startModule = function(mod) {
+            const startModule = (mod) => {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) { const ctx = new AudioContext(); ctx.resume(); }
+
                 setActiveModule(mod);
                 setLevelIndex(0);
                 setHearts(5);
@@ -274,37 +232,40 @@
                 setView('GAME');
             };
 
-            var handleSuccess = function() {
+            const handleSuccess = () => {
                 setStatus('correct');
                 AudioEngine.playDing();
-                if (currentLevel.targetSentence) AudioEngine.speak(currentLevel.targetSentence);
+                if (currentLevel && currentLevel.targetSentence) AudioEngine.speak(currentLevel.targetSentence);
             };
 
-            var handleError = function() {
+            const handleError = () => {
                 setStatus('wrong');
                 AudioEngine.playBoop();
-                setHearts(function(h) { return Math.max(0, h - 1); });
+                setHearts(h => Math.max(0, h - 1));
             };
 
-            var nextLevel = function() {
-                if (levelIndex < activeModule.levels.length - 1) {
-                    setLevelIndex(function(i) { return i + 1; });
-                    setProgress(((levelIndex + 2) / (activeModule.levels.length + 1)) * 100);
+            const nextLevel = () => {
+                if (activeModule && levelIndex < activeModule.levels.length - 1) {
+                    const newIndex = levelIndex + 1;
+                    setLevelIndex(newIndex);
+                    setProgress(((newIndex + 2) / (activeModule.levels.length + 1)) * 100);
                 } else {
                     setView('FINISHED');
                     AudioEngine.playDing();
                 }
             };
 
-            var checkAnswer = function() {
+            const checkAnswer = () => {
                 if (status !== 'idle') { nextLevel(); return; }
+                if (!currentLevel) return;
                 
-                var isCorrect = false;
+                let isCorrect = false;
                 if (currentLevel.type === 'build') {
-                    var sentence = buildSelected.join(currentLevel.targetSentence.indexOf(' ') !== -1 ? ' ' : '');
+                    const separator = currentLevel.targetSentence.indexOf(' ') >= 0 ? ' ' : '';
+                    const sentence = buildSelected.join(separator);
                     isCorrect = sentence === currentLevel.targetSentence;
                 } else if (currentLevel.type === 'audio_choice' || currentLevel.type === 'picture_choice') {
-                    var opt = currentLevel.options.find(function(o) { return o.id === choiceSelected; });
+                    const opt = currentLevel.options.filter(o => o.id === choiceSelected)[0];
                     isCorrect = opt && opt.isCorrect;
                 } else if (currentLevel.type === 'tracing') {
                     isCorrect = canvasDrawn;
@@ -316,200 +277,213 @@
             };
 
             // Canvas Logic
-            var getCoords = function(e) {
-                var rect = canvasRef.current.getBoundingClientRect();
-                var clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                var clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                return { x: (clientX - rect.left) * (canvasRef.current.width / rect.width), y: (clientY - rect.top) * (canvasRef.current.height / rect.height) };
+            const getCoords = (e) => {
+                const rect = canvasRef.current.getBoundingClientRect();
+                let clientX, clientY;
+                if (e.touches && e.touches.length > 0) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
+                return { 
+                    x: (clientX - rect.left) * (canvasRef.current.width / rect.width), 
+                    y: (clientY - rect.top) * (canvasRef.current.height / rect.height) 
+                };
             };
-            var startDraw = function(e) {
+
+            const startDraw = (e) => {
                 isDrawing.current = true;
-                var ctx = canvasRef.current.getContext('2d');
+                const ctx = canvasRef.current.getContext('2d');
                 ctx.lineWidth = 15; ctx.lineCap = 'round'; ctx.strokeStyle = '#3b82f6';
-                var coords = getCoords(e);
+                const coords = getCoords(e);
                 ctx.beginPath(); ctx.moveTo(coords.x, coords.y);
                 setCanvasDrawn(true);
             };
-            var draw = function(e) {
+            const draw = (e) => {
                 if (!isDrawing.current) return;
-                e.preventDefault(); // Prevent scrolling on mobile
-                var ctx = canvasRef.current.getContext('2d');
-                var coords = getCoords(e);
+                const ctx = canvasRef.current.getContext('2d');
+                const coords = getCoords(e);
                 ctx.lineTo(coords.x, coords.y); ctx.stroke();
             };
-            var endDraw = function() { isDrawing.current = false; };
-            var clearCanvas = function() {
-                var ctx = canvasRef.current.getContext('2d');
+            const endDraw = () => { isDrawing.current = false; };
+            const clearCanvas = () => {
+                const ctx = canvasRef.current.getContext('2d');
                 ctx.clearRect(0, 0, 600, 600);
                 setCanvasDrawn(false);
             };
 
-            // RENDERERS
+            // VIEWS
             if (view === 'HOME') {
                 return (
-                    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 gap-8">
+                    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 space-y-8">
                         <div className="text-center">
                             <h1 className="text-4xl md:text-6xl font-black text-slate-700 mb-2">English Quiz</h1>
                             <p className="text-xl text-slate-400">Select a lesson</p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl">
-                            {MODULES.map(function(m) { return (
-                                <button key={m.id} onClick={function() { return startModule(m); }} className="bg-white p-6 md:p-8 rounded-3xl border-4 border-slate-200 shadow-lg hover:border-blue-400 hover:-translate-y-1 transition-all flex items-center gap-6 text-left group">
-                                    <div className={"w-20 h-20 " + m.themeColor + " rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-inner"}>Aa</div>
+                            {MODULES.map(m => (
+                                <button key={m.id} onClick={() => startModule(m)} className="bg-white p-6 md:p-8 rounded-3xl border-4 border-slate-200 shadow-lg flex items-center space-x-6 text-left group active:scale-95 transition-transform">
+                                    <div className={`w-20 h-20 ${m.themeColor} rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-inner`}>Aa</div>
                                     <div>
-                                        <h2 className="text-2xl md:text-3xl font-bold text-slate-700 group-hover:text-blue-600 transition-colors">{m.title}</h2>
+                                        <h2 className="text-2xl md:text-3xl font-bold text-slate-700">{m.title}</h2>
                                         <p className="text-slate-400 text-lg">{m.description}</p>
                                     </div>
                                 </button>
-                            ); })}
+                            ))}
                         </div>
                     </div>
                 );
             }
+
             if (view === 'FINISHED') {
                 return (
-                    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4 text-center gap-6">
+                    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4 text-center space-y-6">
                         <div className="text-8xl animate-bounce"><IconFlame className="w-32 h-32 text-orange-500 mx-auto"/></div>
                         <h1 className="text-5xl font-black text-slate-800">Great Job!</h1>
-                        <button onClick={function() { return setView('HOME'); }} className="bg-blue-500 text-white px-8 py-4 rounded-full text-xl font-bold flex items-center gap-2 hover:bg-blue-600 transition-colors mx-auto"><IconHome className="w-6 h-6"/> Back Home</button>
+                        <button onClick={() => setView('HOME')} className="bg-blue-500 text-white px-8 py-4 rounded-full text-xl font-bold flex items-center space-x-2 active:bg-blue-600 transition-colors mx-auto">
+                            <IconHome className="w-6 h-6"/> <span>Back Home</span>
+                        </button>
                     </div>
                 );
             }
 
+            // GAME
             return (
                 <div className="fixed inset-0 flex flex-col bg-slate-50">
                     {/* Header */}
-                    <div className="h-16 bg-white border-b flex items-center px-4 gap-4 shrink-0 safe-top">
-                        <button onClick={function() { return setView('HOME'); }}><IconArrowLeft className="w-8 h-8 text-slate-400 hover:text-blue-500"/></button>
-                        <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-green-500 transition-all duration-500" style={{width: progress + "%"}}></div>
+                    <div className="h-16 bg-white border-b flex items-center px-4 justify-between shrink-0 safe-top">
+                        <button onClick={() => setView('HOME')}><IconArrowLeft className="w-8 h-8 text-slate-400"/></button>
+                        <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden mx-4">
+                            <div className="h-full bg-green-500 transition-all duration-500" style={{width: progress + '%'}}></div>
                         </div>
-                        {/* 修正后的爱心显示：使用纯文本 ❤️ 代替SVG组件，避免CSS兼容性导致的巨型爱心问题 */}
-                        <div className="flex items-center gap-1 text-red-500 font-bold text-2xl">❤️ {hearts}</div>
+                        <div className="flex items-center space-x-1 text-red-500 font-bold text-2xl">
+                            <IconHeart className="w-8 h-8"/> <span>{hearts}</span>
+                        </div>
                     </div>
 
-                    {/* Game Content */}
+                    {/* Content */}
                     <div className="flex-1 overflow-y-auto scrollbar-hide p-4 flex flex-col items-center justify-center w-full max-w-6xl mx-auto">
                         
                         {/* BUILD */}
                         {currentLevel.type === 'build' && (
-                            <div className="w-full h-full flex flex-col justify-between py-4">
+                            <div className="w-full h-full flex flex-col justify-between py-4 space-y-4">
                                 <div className="text-center space-y-4">
                                     <h2 className="text-2xl md:text-4xl font-bold text-slate-400">BUILD THE SENTENCE</h2>
-                                    <div className="text-4xl md:text-6xl font-bold text-slate-800 flex flex-col items-center gap-2">
+                                    <div className="text-4xl md:text-6xl font-bold text-slate-800 flex flex-col items-center space-y-2">
                                         <span>{currentLevel.chinese}</span>
-                                        <button onClick={function() { return AudioEngine.speak(currentLevel.targetSentence); }} className="bg-blue-100 text-blue-500 rounded-full p-2"><IconVolume className="w-6 h-6"/></button>
+                                        <button onClick={()=>AudioEngine.speak(currentLevel.targetSentence)} className="bg-blue-100 text-blue-500 rounded-full p-2"><IconVolume className="w-6 h-6"/></button>
                                     </div>
                                 </div>
-                                <div className="flex flex-wrap justify-center gap-2 min-h-[80px] border-b-4 border-slate-200 p-4">
-                                    {buildSelected.map(function(w, i) { return (
-                                        <button key={i} onClick={function() {
-                                            var newSel = [].concat(buildSelected); newSel.splice(i, 1); setBuildSelected(newSel);
-                                            setBuildBank(function(prev) { return prev.map(function(bw) { return bw.text === w && bw.used ? Object.assign({}, bw, { used: false }) : bw; }); });
-                                        }} className="bg-white border-2 border-slate-200 px-4 py-2 rounded-xl text-2xl md:text-4xl font-bold shadow-sm">{w}</button>
-                                    ); })}
+                                <div className="flex flex-wrap justify-center min-h-[80px] border-b-4 border-slate-200 p-4">
+                                    {buildSelected.map((w, i) => (
+                                        <button key={i} onClick={() => {
+                                            const newSel = [...buildSelected]; newSel.splice(i, 1); setBuildSelected(newSel);
+                                            setBuildBank(prev => prev.map(bw => bw.text === w && bw.used ? { ...bw, used: false } : bw));
+                                        }} className="bg-white border-2 border-slate-200 px-4 py-2 rounded-xl text-2xl md:text-4xl font-bold shadow-sm m-1">{w}</button>
+                                    ))}
                                 </div>
-                                <div className="flex flex-wrap justify-center gap-3">
-                                    {buildBank.map(function(item, i) { return (
-                                        <button key={i} onClick={function() {
+                                <div className="flex flex-wrap justify-center">
+                                    {buildBank.map((item, i) => (
+                                        <button key={i} onClick={() => {
                                             if(item.used) return;
-                                            setBuildSelected(buildSelected.concat([item.text]));
-                                            setBuildBank(function(prev) { return prev.map(function(bw) { return bw.id === item.id ? Object.assign({}, bw, { used: true }) : bw; }); });
+                                            setBuildSelected([...buildSelected, item.text]);
+                                            setBuildBank(prev => prev.map(bw => bw.id === item.id ? { ...bw, used: true } : bw));
                                             AudioEngine.speak(item.text);
-                                        }} className={"px-6 py-3 rounded-xl border-b-4 text-2xl md:text-4xl font-bold transition-all " + (item.used ? 'opacity-0 pointer-events-none' : 'bg-white border-slate-200 text-slate-700 active:translate-y-1')}>{item.text}</button>
-                                    ); })}
+                                        }} className={`px-6 py-3 m-2 rounded-xl border-b-4 text-2xl md:text-4xl font-bold transition-all ${item.used ? 'opacity-0 pointer-events-none' : 'bg-white border-slate-200 text-slate-700 active:translate-y-1'}`}>{item.text}</button>
+                                    ))}
                                 </div>
                             </div>
                         )}
 
-                        {/* MATCH PAIRS */}
+                        {/* MATCH */}
                         {currentLevel.type === 'match_pairs' && (
                             <div className="w-full h-full flex flex-col">
                                 <h2 className="text-xl text-center font-bold text-slate-400 mb-4">{currentLevel.prompt}</h2>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 flex-1 content-center">
-                                    {currentLevel.pairs.map(function(p) {
-                                        var isSolved = matchSolved.indexOf(p.id) !== -1;
-                                        var isSelected = matchSelected === p.id;
+                                    {currentLevel.pairs.map(p => {
+                                        const isSolved = matchSolved.indexOf(p.id) !== -1;
+                                        const isSelected = matchSelected === p.id;
                                         return (
-                                            <button key={p.id} disabled={isSolved} onClick={function() {
+                                            <button key={p.id} disabled={isSolved} onClick={() => {
                                                 if(isSelected) { setMatchSelected(null); return; }
                                                 if(!matchSelected) { setMatchSelected(p.id); if(p.lang==='en') AudioEngine.speak(p.text); return; }
-                                                var prev = currentLevel.pairs.find(function(i) { return i.id === matchSelected; });
-                                                if(prev.pairId === p.pairId) {
-                                                    setMatchSolved(matchSolved.concat([prev.id, p.id])); setMatchSelected(null); AudioEngine.playDing();
+                                                const prev = currentLevel.pairs.filter(i => i.id === matchSelected)[0];
+                                                if(prev && prev.pairId === p.pairId) {
+                                                    setMatchSolved([...matchSolved, prev.id, p.id]); setMatchSelected(null); AudioEngine.playDing();
                                                 } else {
                                                     setMatchSelected(null); AudioEngine.playBoop();
                                                 }
-                                            }} className={"rounded-2xl border-4 min-h-[80px] md:min-h-[140px] flex items-center justify-center p-2 text-xl md:text-4xl font-bold transition-all " + (isSolved ? 'opacity-0' : isSelected ? 'bg-blue-100 border-blue-500 text-blue-600' : 'bg-white border-slate-200 text-slate-700')}>
+                                            }} className={`rounded-2xl border-4 min-h-[80px] md:min-h-[140px] flex items-center justify-center p-2 text-xl md:text-4xl font-bold transition-all ${isSolved ? 'opacity-0 pointer-events-none' : isSelected ? 'bg-blue-100 border-blue-500 text-blue-600' : 'bg-white border-slate-200 text-slate-700'}`}>
                                                 {p.lang === 'image' ? <span className="text-5xl md:text-7xl">{p.text}</span> : p.text}
                                             </button>
-                                        );
+                                        )
                                     })}
                                 </div>
                             </div>
                         )}
 
-                        {/* CHOICE (Audio/Picture) */}
+                        {/* CHOICE */}
                         {(currentLevel.type === 'audio_choice' || currentLevel.type === 'picture_choice') && (
-                            <div className="w-full flex flex-col items-center gap-6 md:gap-10">
+                            <div className="w-full flex flex-col items-center space-y-6 md:space-y-10">
                                 <h2 className="text-2xl md:text-4xl font-bold text-slate-700 text-center">{currentLevel.prompt}</h2>
                                 <div className="p-4">
-                                    {currentLevel.type === 'audio_choice' && <button onClick={function() { return AudioEngine.speak(currentLevel.audioText); }} className="w-32 h-32 md:w-48 md:h-48 bg-blue-500 rounded-full flex items-center justify-center shadow-lg active:scale-95 text-white"><IconVolume className="w-16 h-16"/></button>}
+                                    {currentLevel.type === 'audio_choice' && <button onClick={() => AudioEngine.speak(currentLevel.audioText)} className="w-32 h-32 md:w-48 md:h-48 bg-blue-500 rounded-full flex items-center justify-center shadow-lg active:scale-95 text-white"><IconVolume className="w-16 h-16"/></button>}
                                     {currentLevel.type === 'picture_choice' && currentLevel.iconType === 'green_light' && <TrafficLightGreen />}
                                     {currentLevel.type === 'picture_choice' && currentLevel.iconType === 'question' && <span className="text-8xl">❓</span>}
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
-                                    {currentLevel.options.map(function(opt) { return (
-                                        <button key={opt.id} onClick={function() { setChoiceSelected(opt.id); if(opt.text) AudioEngine.speak(opt.text); }} className={"py-6 px-4 rounded-xl border-4 text-2xl md:text-3xl font-bold transition-all " + (choiceSelected === opt.id ? 'bg-blue-100 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-700')}>
+                                    {currentLevel.options.map(opt => (
+                                        <button key={opt.id} onClick={() => { setChoiceSelected(opt.id); if(opt.text) AudioEngine.speak(opt.text); }} className={`py-6 px-4 rounded-xl border-4 text-2xl md:text-3xl font-bold transition-all ${choiceSelected === opt.id ? 'bg-blue-100 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-700'}`}>
                                             {opt.text}
                                         </button>
-                                    ); })}
+                                    ))}
                                 </div>
                             </div>
                         )}
 
-                        {/* COLOR REACTION */}
+                        {/* REACTION */}
                         {currentLevel.type === 'color_reaction' && (
-                            <div className="flex flex-col items-center gap-8 w-full">
+                            <div className="flex flex-col items-center space-y-8 w-full">
                                 <h2 className="text-4xl md:text-6xl font-black text-slate-800 animate-bounce">{currentLevel.prompt}</h2>
-                                {/* 这里的按钮应该很大，之前的截图显示它们很小，但CSS补丁应该能修复它们 */}
-                                <div className="flex flex-col md:flex-row gap-6 w-full h-64 md:h-96">
-                                    <button onClick={function() { return currentLevel.targetColor==='red' ? handleSuccess() : handleError(); }} className="flex-1 bg-red-500 rounded-3xl border-b-8 border-red-700 active:border-b-0 active:translate-y-2 flex items-center justify-center"><div className="w-24 h-24 bg-red-400 rounded-full animate-pulse"/></button>
-                                    <button onClick={function() { return currentLevel.targetColor==='green' ? handleSuccess() : handleError(); }} className="flex-1 bg-green-500 rounded-3xl border-b-8 border-green-700 active:border-b-0 active:translate-y-2 flex items-center justify-center"><div className="w-24 h-24 bg-green-400 rounded-full animate-pulse"/></button>
+                                <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6 w-full h-64 md:h-96">
+                                    <button onClick={() => currentLevel.targetColor==='red' ? handleSuccess() : handleError()} className="flex-1 bg-red-500 rounded-3xl border-b-8 border-red-700 active:border-b-0 active:translate-y-2 flex items-center justify-center"><div className="w-24 h-24 bg-red-400 rounded-full animate-pulse"/></button>
+                                    <button onClick={() => currentLevel.targetColor==='green' ? handleSuccess() : handleError()} className="flex-1 bg-green-500 rounded-3xl border-b-8 border-green-700 active:border-b-0 active:translate-y-2 flex items-center justify-center"><div className="w-24 h-24 bg-green-400 rounded-full animate-pulse"/></button>
                                 </div>
                             </div>
                         )}
 
                         {/* TRACING */}
                         {currentLevel.type === 'tracing' && (
-                            <div className="flex flex-col items-center gap-4 w-full">
+                            <div className="flex flex-col items-center space-y-4 w-full">
                                 <h2 className="text-2xl font-bold text-slate-400">Trace the letter</h2>
-                                <div className="relative bg-white rounded-3xl shadow-inner border-4 border-slate-200 overflow-hidden touch-none" style={{width:'min(80vw, 500px)', height:'min(80vw, 500px)'}}>
+                                <div className="relative bg-white rounded-3xl shadow-inner border-4 border-slate-200 overflow-hidden canvas-container" style={{width:'min(80vw, 500px)', height:'min(80vw, 500px)'}}>
                                     <div className="absolute inset-0 flex items-center justify-center text-[250px] md:text-[300px] text-slate-100 font-serif select-none pointer-events-none" style={{lineHeight:1}}>{currentLevel.letter}</div>
                                     <canvas ref={canvasRef} width={600} height={600} className="w-full h-full cursor-crosshair relative z-10"
                                         onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
                                         onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw}
                                     />
                                 </div>
-                                <button onClick={clearCanvas} className="bg-slate-200 px-6 py-2 rounded-full font-bold text-slate-600 flex items-center gap-2"><IconEraser className="w-5 h-5"/> Clear</button>
+                                <button onClick={clearCanvas} className="bg-slate-200 px-6 py-2 rounded-full font-bold text-slate-600 flex items-center space-x-2"><IconEraser className="w-5 h-5"/> <span>Clear</span></button>
                             </div>
                         )}
-                        
+
                         {/* MISSING LETTER */}
                         {currentLevel.type === 'missing_letter' && (
-                            <div className="flex flex-col items-center gap-8">
-                                <div className="flex items-end gap-1">
-                                    {currentLevel.displayWord.split('_').map(function(part, i) { return (
+                            <div className="flex flex-col items-center space-y-8">
+                                <div className="flex items-end space-x-1">
+                                    {currentLevel.displayWord.split('_').map((part, i) => (
                                         <React.Fragment key={i}>
                                             <span className="text-6xl md:text-8xl font-mono text-slate-400">{part}</span>
                                             {i === 0 && <span className="text-6xl md:text-8xl font-bold text-blue-500 border-b-8 border-blue-500 min-w-[3rem] text-center px-2">{choiceSelected || '?'}</span>}
                                         </React.Fragment>
-                                    ); })}
+                                    ))}
                                 </div>
-                                <div className="flex gap-4">
-                                    {currentLevel.options.map(function(o) { return (
-                                        <button key={o} onClick={function() { return setChoiceSelected(o); }} className={"w-24 h-24 rounded-2xl text-5xl font-bold border-b-8 transition-all " + (choiceSelected === o ? 'bg-blue-500 border-blue-700 text-white' : 'bg-white border-slate-200 text-slate-700')}>{o}</button>
-                                    ); })}
+                                <div className="flex space-x-4">
+                                    {currentLevel.options.map(o => (
+                                        <button key={o} onClick={() => setChoiceSelected(o)} className={`w-24 h-24 rounded-2xl text-5xl font-bold border-b-8 transition-all ${choiceSelected === o ? 'bg-blue-500 border-blue-700 text-white' : 'bg-white border-slate-200 text-slate-700'}`}>{o}</button>
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -518,12 +492,12 @@
                     {/* Footer */}
                     <div className="h-24 bg-white border-t border-slate-100 flex items-center justify-between px-6 shrink-0 safe-bottom">
                         <div className="flex-1">
-                            {status === 'correct' && <div className="text-green-500 font-black text-3xl animate-bounce flex items-center gap-2"><IconCheck className="w-8 h-8"/> GOOD!</div>}
-                            {status === 'wrong' && <div className="text-red-500 font-black text-3xl animate-shake flex items-center gap-2"><IconX className="w-8 h-8"/> TRY AGAIN</div>}
+                            {status === 'correct' && <div className="text-green-500 font-black text-3xl animate-bounce flex items-center space-x-2"><IconCheck className="w-8 h-8"/> <span>GOOD!</span></div>}
+                            {status === 'wrong' && <div className="text-red-500 font-black text-3xl animate-shake flex items-center space-x-2"><IconX className="w-8 h-8"/> <span>TRY AGAIN</span></div>}
                         </div>
                         {currentLevel.type !== 'color_reaction' && (
-                            <button onClick={checkAnswer} className={"px-10 py-4 rounded-2xl font-black text-2xl uppercase shadow-lg active:scale-95 transition-all " + ((status !== 'idle' || matchSolved.length === currentLevel.pairs.length) ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-slate-200 text-slate-400 cursor-not-allowed')} disabled={status === 'wrong'}>
-                                {status === 'correct' ? 'Next' : 'Check'}
+                            <button onClick={checkAnswer} className={`px-10 py-4 rounded-2xl font-black text-2xl uppercase shadow-lg active:scale-95 transition-all ${status === 'idle' ? 'bg-green-500 text-white shadow-green-200' : status === 'correct' ? 'bg-blue-500 text-white' : 'bg-red-500 text-white'}`}>
+                                {status === 'idle' ? 'Check' : 'Next'}
                             </button>
                         )}
                     </div>
