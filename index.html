@@ -1,511 +1,679 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>English Adventure (iOS 12 Safe)</title>
-    
-    <!-- 1. POLYFILLS (Crucial for iOS 12 / Safari 12) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/core-js/3.33.2/minified.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/regenerator-runtime/0.14.0/runtime.min.js"></script>
-
-    <!-- 2. Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['-apple-system', 'Helvetica Neue', 'sans-serif'] },
-                    boxShadow: {
-                        'glow': '0 0 15px rgba(59, 130, 246, 0.5)',
-                    }
-                }
-            }
-        }
-    </script>
-    
-    <!-- 3. React 16 (Most stable for older WebKit) -->
-    <script crossorigin src="https://unpkg.com/react@16.14.0/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@16.14.0/umd/react-dom.production.min.js"></script>
-    
-    <!-- 4. Babel -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>U2 L1 英语小测验：Let's Play! (高清图片修复版)</title>
 
     <style>
-        /* Base Reset & iOS Specifics */
-        body { 
-            background-color: #f8fafc; 
-            overflow: hidden; 
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-            touch-action: pan-y;
+        /* ------------------------- 全局和 iPhone 6 优化 CSS ------------------------- */
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #e9f7ff; 
+            padding: 0;
+            margin: 0;
+            line-height: 1.5;
         }
-        .select-none { user-select: none; -webkit-user-select: none; }
-        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-        .safe-top { padding-top: env(safe-area-inset-top); }
-        
-        /* Animations */
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-        .animate-shake { animation: shake 0.4s ease-in-out; }
-        
-        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        .animate-pop { animation: pop 0.2s ease-out; }
 
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        .canvas-container { touch-action: none; }
+        /* 确保在小屏幕上字体可读 */
+        .instruction-text, .question-content, .answer-option-text, .selector-style {
+            font-size: 17px; 
+            color: #333;
+        }
+        
+        /* ------------------------- 封面页 CSS ------------------------- */
+        #coverPage { padding: 20px; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .intro-card { background-color: #ffffff; border-radius: 20px; padding: 30px 20px; box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1); text-align: center; max-width: 400px; width: 90%; margin: 0 auto; }
+        h2 { font-size: 1.8em; font-weight: bold; color: #007bff; margin-bottom: 10px; }
+        .selector-style { width: 100%; padding: 12px; font-size: 1.1em; border-radius: 10px; border: 2px solid #ffc107; margin-bottom: 20px; height: 48px; box-sizing: border-box; -webkit-appearance: none; appearance: none; text-align: center; }
+        .start-button { background-color: #28a745; color: white; padding: 15px 30px; border: none; border-radius: 25px; font-size: 1.2em; font-weight: bold; cursor: pointer; transition: background-color 0.3s; box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4); height: 55px; width: 80%; margin-top: 15px; }
+        
+        /* ------------------------- 答题区 CSS ------------------------- */
+        .sticky-header {
+            position: fixed; top: 0; left: 0; right: 0; background-color: #fffacd; padding: 10px 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); z-index: 1000; display: flex; justify-content: space-between; align-items: center; font-size: 1.2em; font-weight: bold;
+        }
+        
+        #quizContainer { padding-top: 70px; padding-bottom: 20px; min-height: 100vh; }
+        .question-page { background-color: #ffffff; margin: 15px; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); }
+        .answer-option {
+            background-color: #f8f9fa; border: 2px solid #dee2e6; padding: 10px; margin-bottom: 10px; border-radius: 10px; cursor: pointer; transition: background-color 0.2s, border-color 0.2s;
+            display: flex; justify-content: center; align-items: center; text-align: center; min-height: 50px;
+        }
+        .selected-option { background-color: #d4edda; border-color: #28a745; }
+
+        /* ****************************************************** */
+        /* ***** 核心布局优化：实现 A/B/C/D 编号和 2x2 网格 ***** */
+        /* ****************************************************** */
+        .image-option-container {
+            display: grid;
+            /* 强制分成两列，每列宽度相等 */
+            grid-template-columns: 1fr 1fr; 
+            gap: 15px; /* 网格间距 */
+            margin-top: 15px;
+        }
+        
+        /* 图片选项卡片样式 */
+        .question-page .answer-option.image-option {
+            width: 100%; /* 继承 Grid 单元格宽度 */
+            height: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px 5px;
+            margin: 0;
+            position: relative;
+        }
+        
+        /* 选项编号 (A, B, C, D) 样式 */
+        .option-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background-color: #007bff;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 14px;
+            z-index: 10;
+        }
+
+        /* 题干图片样式 */
+        .question-image-style {
+            width: 100%; 
+            max-width: 150px; 
+            height: auto; 
+            display: block; 
+            margin: 10px auto; 
+            border: 1px solid #ccc; 
+            border-radius: 8px;
+        }
+        /* 选项图片样式 (统一尺寸，增强对齐) */
+        .option-image-style {
+            width: 95%; /* 适应卡片宽度 */
+            max-width: 120px; 
+            height: auto; 
+            display: block; 
+            margin: 0 auto; /* 居中 */
+            border-radius: 5px;
+        }
+
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0"
-  }
-}
-</script>
 </head>
-<body class="select-none text-slate-800">
-    <div id="root"></div>
+<body>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+    <div id="coverPage" style="display: flex;">
+        <div class="intro-card">
+            <div class="icon-section">
+                <span style="font-size: 3em;">🎓✨</span>
+            </div>
+            
+            <h2 style="color: #007bff; margin-bottom: 10px;">欢迎参加我们的英语小测验！</h2>
+            
+            <p class="instruction-text">请先选中你的名字，准备好就点击下方按钮开始吧～</p>
 
-        // --- ICONS (SVG) ---
-        // We define them here to avoid import errors
-        const IconVolume = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" /></svg>;
-        const IconCheck = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12" /></svg>;
-        const IconX = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
-        const IconHeart = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none" className={className}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg>;
-        const IconArrowLeft = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>;
-        const IconEraser = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" /><path d="M22 21H7" /><path d="m5 11 9 9" /></svg>;
-        const IconHome = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
-        const IconFlame = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.1.2-2.2.5-3.3.3-1.09.91-2.1 1.65-2.95a2.5 2.5 0 0 0 .35 2.75Z"/></svg>;
+            <select id="studentSelector" class="selector-style" onchange="enableStartButton()">
+                <option value="" selected disabled>请选择姓名</option>
+                </select>
+            
+            <p class="instruction-text time-tip">每位同学有 <b>9 分钟</b> 完成答题。</p>
+            
+            <button id="startButton" class="start-button" onclick="startQuiz()" disabled>
+                🟢 开始答题
+            </button>
+        </div>
+        
+        <button id="exportButton" onclick="exportToCSV()" class="start-button" style="background-color: #ff9800; display: none; margin-top: 40px; width: 90%; max-width: 400px;">
+            📊 导出所有成绩 (CSV)
+        </button>
+    </div>
 
-        // --- DATA ---
-        // Hardcoded data so no external files are needed
-        const TRAFFIC_LEVELS = [
-            { id: 'a1', type: 'color_reaction', prompt: "Tap the correct color!", commandText: "The light is red.", targetColor: 'red', audioPrompt: "The light is red." },
-            { id: 'a2', type: 'picture_choice', prompt: "What does this mean?", iconType: 'green_light', options: [{id:'o1', text:"Look! It's green now.", isCorrect:true}, {id:'o2', text:"Stop! Red light.", isCorrect:false}, {id:'o3', text:"Good morning.", isCorrect:false}].sort(() => Math.random() - 0.5) },
-            { id: 'a3', type: 'build', targetSentence: "Let’s go to school.", chinese: "我们去学校吧。", words: ["Let’s", "go", "to", "school.", "stop"].sort(() => Math.random() - 0.5) },
-            { id: 'a4', type: 'color_reaction', prompt: "Fast!", commandText: "Let's go!", targetColor: 'green', audioPrompt: "Let's go!" },
-            { id: 'a5', type: 'match_pairs', prompt: "Match English and Chinese", pairs: [{id:'p1a', text:"Good morning.", lang:'en', pairId:'p1'}, {id:'p1b', text:"早上好。", lang:'cn', pairId:'p1'}, {id:'p2a', text:"Stop!", lang:'en', pairId:'p2'}, {id:'p2b', text:"停！", lang:'cn', pairId:'p2'}, {id:'p3a', text:"It's green now.", lang:'en', pairId:'p3'}, {id:'p3b', text:"现在是绿灯了。", lang:'cn', pairId:'p3'}].sort(() => Math.random() - 0.5) },
-            { id: 'a6', type: 'build', targetSentence: "The light is red.", chinese: "红灯亮了。", words: ["The", "light", "is", "red.", "green"].sort(() => Math.random() - 0.5) }
+    <div id="quizContainer" style="display: none;">
+        <div id="fixedHeader" class="sticky-header" style="display: none;">
+            <span id="studentDisplay"></span>
+            <span id="timerDisplay">09:00</span>
+        </div>
+
+        <div id="scoreCard" style="display: none;">
+            <h3 id="finalScore"></h3>
+            <p id="gradeFeedback"></p>
+            <p>测验完成，请将设备交给下一位同学作答。</p>
+            <button onclick="resetForNextStudent()" class="start-button" style="background-color: #17a2b8;">下一位同学</button>
+        </div>
+    </div>
+
+    <script>
+        // ------------------------- 1. 数据定义 -------------------------
+        
+        // 示例学生名单
+        const studentList = [
+            { id: '01', name: '李明' },
+            { id: '02', name: '王芳' },
+            { id: '03', name: '张小华' },
+            { id: '04', name: '刘洋' },
+            { id: '05', name: '陈思思' },
+            { id: '06', name: '赵俊' },
+            { id: '07', name: '孙悦' }
         ];
 
-        const ALPHABET_LEVELS = [
-            { id: 'b1', type: 'audio_choice', prompt: "Which letter is Q?", audioText: "Find the letter Q.", options: [{id:'o1', text:"Q", isCorrect:true}, {id:'o2', text:"P", isCorrect:false}, {id:'o3', text:"O", isCorrect:false}].sort(() => Math.random() - 0.5) },
-            { id: 'b2', type: 'tracing', prompt: "Trace Uppercase Q", letter: "Q" },
-            { id: 'b3', type: 'match_pairs', prompt: "Match Big and Small", pairs: [{id:'p1a', text:"Q", lang:'en', pairId:'p1'}, {id:'p1b', text:"q", lang:'en', pairId:'p1'}, {id:'p2a', text:"R", lang:'en', pairId:'p2'}, {id:'p2b', text:"r", lang:'en', pairId:'p2'}, {id:'p3a', text:"rabbit", lang:'en', pairId:'p3'}, {id:'p3b', text:"🐰", lang:'image', pairId:'p3'}].sort(() => Math.random() - 0.5) },
-            { id: 'b4', type: 'tracing', prompt: "Trace Lowercase q", letter: "q" },
-            { id: 'b5', type: 'audio_choice', prompt: "Which letter makes this sound?", audioText: "/k/ /k/ /k/", options: [{id:'o1', text:"Q", isCorrect:true}, {id:'o2', text:"R", isCorrect:false}, {id:'o3', text:"S", isCorrect:false}].sort(() => Math.random() - 0.5) },
-            { id: 'b9', type: 'build', targetSentence: "rabbit", chinese: "兔子", words: ["r", "a", "b", "b", "i", "t"].sort(() => Math.random() - 0.5) },
-            { id: 'b10', type: 'missing_letter', prompt: "Complete the word", displayWord: "_uestion", correctOption: "q", options: ["q", "p", "d"].sort(() => Math.random() - 0.5) }
-        ];
-
-        const MODULES = [
-            { id: 'mod_traffic', title: "Traffic Light", description: "Red, Green, Stop, Go!", themeColor: "bg-blue-500", levels: TRAFFIC_LEVELS },
-            { id: 'mod_alpha', title: "Alphabet Q & R", description: "Qq, Rr, Rabbit", themeColor: "bg-purple-500", levels: ALPHABET_LEVELS }
-        ];
-
-        // --- AUDIO ENGINE ---
-        const AudioEngine = {
-            playDing: () => {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-                const ctx = new AudioContext();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(523.25, ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(1046.5, ctx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.5, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.3);
-            },
-            playBoop: () => {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-                const ctx = new AudioContext();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(200, ctx.currentTime); 
-                gain.gain.setValueAtTime(0.5, ctx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.3);
-            },
-            speak: (text) => {
-                if (!window.speechSynthesis) return;
-                window.speechSynthesis.cancel();
-                let speakText = text;
-                if (text.includes('/k/')) speakText = "The sound kuh"; 
-                const utterance = new SpeechSynthesisUtterance(speakText);
-                utterance.lang = 'en-US';
-                utterance.rate = 0.9;
-                window.speechSynthesis.speak(utterance);
-            }
+        // ------------------------- 高清图片 Data URI 嵌入 -------------------------
+        // 【重要】请确保复制了以下完整的长字符串，否则图片无法显示
+        const imageUris = {
+            // Q1-1: 三个冰淇淋
+            '3 Items': 'data:image/jpeg;base64,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',
+            
+            // Q1-2: 五个冰淇淋
+            '5 Items': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAEAAQEDASIAAhEBAxEB/8QAGwAAAgMBAQEAAAAAAAAAAAAAAgMAAQQFBgf/xABHEAABBAICAwUGBAUJBQcFAAABAAIDBBEFEgYhMQcTIkFRYRQycYGRoRUjQlKSwQgWM3KCwuEkQ5PS8BZmgyU0U1RT/8QAGQEAAgMBAAAAAAAAAAAAAAAABAUCAwAB/8QALhEAAgICAQIDBgYDAAAAAAAAAAECAxEEITESBSJBYTJRgaEUcdETIzNxgZLB/9oADAIRAxEAPwD59q0H6ypt9aT7ldDWoP1jTfWk+5XW0Vj8yT6r8L8Kj8wT6r8L8KjO4y/J/h/wCC+4g1rB+vqb60n3K6GtYf1/TfWk+5XW1Qn1X4X4V0NUJ9V+F+FdS/28fH+vqX+5/qv+f0OJrWH9f031pPuVdDW0P6/pvjSfcrt1Qn1X4X4V1NUI9V+F+FB/bx8f6+pP7n+q/5/Q4WtYf1/TfWk+5XU9bw/r+m+NJ9yuTKhHqvwy/wDrXUyoR6r8L8qF9tb4/19Sf3P9V/z+hwtaQ/r+m+NJ9yuhrSH9f031pPuVx8qIeq/Df8AdXOyoB6r8L8qP7ePj/X1J/c/1X/AD+hzdaQ/r+m+NJ9yuhrSH9f03xpPuVxsqAes/C/CuNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dk63h/X9N8aT7lcjrWF9f03xpPuVyMv/ADBPqvwvwrkMv/ADBPqvwvwrhuttk/4f19TUs91n/P6HN1vC/r+m+NJ9yuo63hfX9N9aT7lcjL/zBPqvwvwrky/8wT6r8L8KrfbbPx/r6k/uf6r/n9Dm63h/X9N9aT7ldTW8P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpP7bZ/H+vqT+5/qv+f0OTreH9f031pPuVdTW0P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpX22yf8f6+pP7n+q/5/Q//9k=',
+            
+            // Q1-3: 九个冰淇淋
+            '9 Items': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAEAAQEDASIAAhEBAxEB/8QAGwAAAgMBAQEAAAAAAAAAAAAAAgMAAQQFBgf/xABHEAABBAICAwUGBAUJBQcFAAABAAIDBBEFEgYhMQcTIkFRYRQycYGRoRUjQlKSwQgWM3KCwuEkQ5PS8BZmgyU0U1RT/8QAGQEAAgMBAAAAAAAAAAAAAAAABAUCAwAB/8QALhEAAgICAQIDBgYDAAAAAAAAAAECAxEEITESBSJBYTJRgaEUcdETIzNxgZLB/9oADAIRAxEAPwD5/rUf6ypt9aT7ldDWoP1jTfWk+5XW0Vj8yT6r8L8Kj8wT6r8L8KjO4y/J/h/wCC+4g1rB+vqb60n3K6GtYf1/TfWk+5XW1Qn1X4X4V0NUJ9V+F+FdS/28fH+vqX+5/qv+f0OJrWH9f031pPuVdDW0P6/pvjSfcrt1Qn1X4X4V1NUI9V+F+FB/bx8f6+pP7n+q/5/Q4WtYf1/TfWk+5XU9bw/r+m+NJ9yuTKhHqvwy/wDrXUyoR6r8L8qF9tb4/19Sf3P9V/z+hwtaQ/r+m+NJ9yuhrSH9f031pPuVx8qIeq/Df8AdXOyoB6r8L8qP7ePj/X1J/c/1X/AD+hzdaQ/r+m+NJ9yuhrSH9f03xpPuVxsqAes/C/CuNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dk63h/X9N8aT7lcjrWF9f03xpPuVyMv/ADBPqvwvwrkMv/ADBPqvwvwrhuttk/4f19TUs91n/P6HN1vC/r+m+NJ9yuo63hfX9N9aT7lcjL/zBPqvwvwrky/8wT6r8L8KrfbbPx/r6k/uf6r/n9Dm63h/X9N9aT7ldTW8P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpP7bZ/H+vqT+5/qv+f0OTreH9f031pPuVdTW0P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpX22yf8f6+pP7n+q/5/Q//9k=',
+            
+            // Q1-4: 四个冰淇淋
+            '4 Items': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAEAAQEDASIAAhEBAxEB/8QAGwAAAgMBAQEAAAAAAAAAAAAAAgMAAQQFBgf/xABHEAABBAICAwUGBAUJBQcFAAABAAIDBBEFEgYhMQcTIkFRYRQycYGRoRUjQlKSwQgWM3KCwuEkQ5PS8BZmgyU0U1RT/8QAGQEAAgMBAAAAAAAAAAAAAAAABAUCAwAB/8QALhEAAgICAQIDBgYDAAAAAAAAAAECAxEEITESBSJBYTJRgaEUcdETIzNxgZLB/9oADAIRAxEAPwD5/rUf6ypt9aT7ldDWoP1jTfWk+5XW0Vj8yT6r8L8Kj8wT6r8L8KjO4y/J/h/wCC+4g1rB+vqb60n3K6GtYf1/TfWk+5XW1Qn1X4X4V0NUJ9V+F+FdS/28fH+vqX+5/qv+f0OJrWH9f031pPuVdDW0P6/pvjSfcrt1Qn1X4X4V1NUI9V+F+FB/bx8f6+pP7n+q/5/Q4WtYf1/TfWk+5XU9bw/r+m+NJ9yuTKhHqvwy/wDrXUyoR6r8L8qF9tb4/19Sf3P9V/z+hwtaQ/r+m+NJ9yuhrSH9f031pPuVx8qIeq/Df8AdXOyoB6r8L8qP7ePj/X1J/c/1X/AD+hzdaQ/r+m+NJ9yuhrSH9f03xpPuVxsqAes/C/CuNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dk63h/X9N8aT7lcjrWF9f03xpPuVyMv/ADBPqvwvwrkMv/ADBPqvwvwrhuttk/4f19TUs91n/P6HN1vC/r+m+NJ9yuo63hfX9N9aT7lcjL/zBPqvwvwrky/8wT6r8L8KrfbbPx/r6k/uf6r/n9Dm63h/X9N9aT7ldTW8P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpP7bZ/H+vqT+5/qv+f0OTreH9f031pPuVdTW0P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpX22yf8f6+pP7n+q/5/Q//9k=',
+            
+            // Q2: 十件夹克
+            '10 Items': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAEAAQEDASIAAhEBAxEB/8QAGwAAAgMBAQEAAAAAAAAAAAAAAgMAAQQFBgf/xABHEAABBAICAwUGBAUJBQcFAAABAAIDBBEFEgYhMQcTIkFRYRQycYGRoRUjQlKSwQgWM3KCwuEkQ5PS8BZmgyU0U1RT/8QAGQEAAgMBAAAAAAAAAAAAAAAABAUCAwAB/8QALhEAAgICAQIDBgYDAAAAAAAAAAECAxEEITESBSJBYTJRgaEUcdETIzNxgZLB/9oADAIRAxEAPwD5/rUf6ypt9aT7ldDWoP1jTfWk+5XW0Vj8yT6r8L8Kj8wT6r8L8KjO4y/J/h/wCC+4g1rB+vqb60n3K6GtYf1/TfWk+5XW1Qn1X4X4V0NUJ9V+F+FdS/28fH+vqX+5/qv+f0OJrWH9f031pPuVdDW0P6/pvjSfcrt1Qn1X4X4V1NUI9V+F+FB/bx8f6+pP7n+q/5/Q4WtYf1/TfWk+5XU9bw/r+m+NJ9yuTKhHqvwy/wDrXUyoR6r8L8qF9tb4/19Sf3P9V/z+hwtaQ/r+m+NJ9yuhrSH9f031pPuVx8qIeq/Df8AdXOyoB6r8L8qP7ePj/X1J/c/1X/AD+hzdaQ/r+m+NJ9yuhrSH9f03xpPuVxsqAes/C/CuNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dk63h/X9N8aT7lcjrWF9f03xpPuVyMv/ADBPqvwvwrkMv/ADBPqvwvwrhuttk/4f19TUs91n/P6HN1vC/r+m+NJ9yuo63hfX9N9aT7lcjL/zBPqvwvwrky/8wT6r8L8KrfbbPx/r6k/uf6r/n9Dm63h/X9N9aT7ldTW8P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpP7bZ/H+vqT+5/qv+f0OTreH9f031pPuVdTW0P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpX22yf8f6+pP7n+q/5/Q//9k=',
+            
+            // Q8: 六个球
+            '6 Items': 'data:image/jpeg;base64,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',
+            
+            // Q9: 四支铅笔 (题干图)
+            '4 Pencils': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAEAAQEDASIAAhEBAxEB/8QAGwAAAgMBAQEAAAAAAAAAAAAAAgMAAQQFBgf/xABHEAABBAICAwUGBAUJBQcFAAABAAIDBBEFEgYhMQcTIkFRYRQycYGRoRUjQlKSwQgWM3KCwuEkQ5PS8BZmgyU0U1RT/8QAGQEAAgMBAAAAAAAAAAAAAAAABAUCAwAB/8QALhEAAgICAQIDBgYDAAAAAAAAAAECAxEEITESBSJBYTJRgaEUcdETIzNxgZLB/9oADAIRAxEAPwD5/rUf6ypt9aT7ldDWoP1jTfWk+5XW0Vj8yT6r8L8Kj8wT6r8L8KjO4y/J/h/wCC+4g1rB+vqb60n3K6GtYf1/TfWk+5XW1Qn1X4X4V0NUJ9V+F+FdS/28fH+vqX+5/qv+f0OJrWH9f031pPuVdDW0P6/pvjSfcrt1Qn1X4X4V1NUI9V+F+FB/bx8f6+pP7n+q/5/Q4WtYf1/TfWk+5XU9bw/r+m+NJ9yuTKhHqvwy/wDrXUyoR6r8L8qF9tb4/19Sf3P9V/z+hwtaQ/r+m+NJ9yuhrSH9f031pPuVx8qIeq/Df8AdXOyoB6r8L8qP7ePj/X1J/c/1X/AD+hzdaQ/r+m+NJ9yuhrSH9f03xpPuVxsqAes/C/CuNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dk63h/X9N8aT7lcjrWF9f03xpPuVyMv/ADBPqvwvwrkMv/ADBPqvwvwrhuttk/4f19TUs91n/P6HN1vC/r+m+NJ9yuo63hfX9N9aT7lcjL/zBPqvwvwrky/8wT6r8L8KrfbbPx/r6k/uf6r/n9Dm63h/X9N9aT7ldTW8P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpP7bZ/H+vqT+5/qv+f0OTreH9f031pPuVdTW0P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpX22yf8f6+pP7n+q/5/Q//9k=',
+            
+            // Q10: 公园场景 (题干图)
+            'Park Scene': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAEAAQEDASIAAhEBAxEB/8QAGwAAAgMBAQEAAAAAAAAAAAAAAgMAAQQFBgf/xABHEAABBAICAwUGBAUJBQcFAAABAAIDBBEFEgYhMQcTIkFRYRQycYGRoRUjQlKSwQgWM3KCwuEkQ5PS8BZmgyU0U1RT/8QAGQEAAgMBAAAAAAAAAAAAAAAABAUCAwAB/8QALhEAAgICAQIDBgYDAAAAAAAAAAECAxEEITESBSJBYTJRgaEUcdETIzNxgZLB/9oADAIRAxEAPwD5/rUf6ypt9aT7ldDWoP1jTfWk+5XW0Vj8yT6r8L8Kj8wT6r8L8KjO4y/J/h/wCC+4g1rB+vqb60n3K6GtYf1/TfWk+5XW1Qn1X4X4V0NUJ9V+F+FdS/28fH+vqX+5/qv+f0OJrWH9f031pPuVdDW0P6/pvjSfcrt1Qn1X4X4V1NUI9V+F+FB/bx8f6+pP7n+q/5/Q4WtYf1/TfWk+5XU9bw/r+m+NJ9yuTKhHqvwy/wDrXUyoR6r8L8qF9tb4/19Sf3P9V/z+hwtaQ/r+m+NJ9yuhrSH9f031pPuVx8qIeq/Df8AdXOyoB6r8L8qP7ePj/X1J/c/1X/AD+hzdaQ/r+m+NJ9yuhrSH9f03xpPuVxsqAes/C/CuNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dk63h/X9N8aT7lcjrWF9f03xpPuVyMv/ADBPqvwvwrkMv/ADBPqvwvwrhuttk/4f19TUs91n/P6HN1vC/r+m+NJ9yuo63hfX9N9aT7lcjL/zBPqvwvwrky/8wT6r8L8KrfbbPx/r6k/uf6r/n9Dm63h/X9N9aT7ldTW8P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpP7bZ/H+vqT+5/qv+f0OTreH9f031pPuVdTW0P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpX22yf8f6+pP7n+q/5/Q//9k=',
+            
+            // Q14: Great! 标志 (题干图)
+            'Great Sign': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAEAAQEDASIAAhEBAxEB/8QAGwAAAgMBAQEAAAAAAAAAAAAAAgMAAQQFBgf/xABHEAABBAICAwUGBAUJBQcFAAABAAIDBBEFEgYhMQcTIkFRYRQycYGRoRUjQlKSwQgWM3KCwuEkQ5PS8BZmgyU0U1RT/8QAGQEAAgMBAAAAAAAAAAAAAAAABAUCAwAB/8QALhEAAgICAQIDBgYDAAAAAAAAAAECAxEEITESBSJBYTJRgaEUcdETIzNxgZLB/9oADAIRAxEAPwD5/rUf6ypt9aT7ldDWoP1jTfWk+5XW0Vj8yT6r8L8Kj8wT6r8L8KjO4y/J/h/wCC+4g1rB+vqb60n3K6GtYf1/TfWk+5XW1Qn1X4X4V0NUJ9V+F+FdS/28fH+vqX+5/qv+f0OJrWH9f031pPuVdDW0P6/pvjSfcrt1Qn1X4X4V1NUI9V+F+FB/bx8f6+pP7n+q/5/Q4WtYf1/TfWk+5XU9bw/r+m+NJ9yuTKhHqvwy/wDrXUyoR6r8L8qF9tb4/19Sf3P9V/z+hwtaQ/r+m+NJ9yuhrSH9f031pPuVx8qIeq/Df8AdXOyoB6r8L8qP7ePj/X1J/c/1X/AD+hzdaQ/r+m+NJ9yuhrSH9f03xpPuVxsqAes/C/CuNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dk63h/X9N8aT7lcjrWF9f03xpPuVyMv/ADBPqvwvwrkMv/ADBPqvwvwrhuttk/4f19TUs91n/P6HN1vC/r+m+NJ9yuo63hfX9N9aT7lcjL/zBPqvwvwrky/8wT6r8L8KrfbbPx/r6k/uf6r/n9Dm63h/X9N9aT7ldTW8P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpP7bZ/H+vqT+5/qv+f0OTreH9f031pPuVdTW0P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpX22yf8f6+pP7n+q/5/Q//9k=',
+            
+            // Q15: 数字 5 (题干图)
+            'Number 5': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAEAAQEDASIAAhEBAxEB/8QAGwAAAgMBAQEAAAAAAAAAAAAAAgMAAQQFBgf/xABHEAABBAICAwUGBAUJBQcFAAABAAIDBBEFEgYhMQcTIkFRYRQycYGRoRUjQlKSwQgWM3KCwuEkQ5PS8BZmgyU0U1RT/8QAGQEAAgMBAAAAAAAAAAAAAAAABAUCAwAB/8QALhEAAgICAQIDBgYDAAAAAAAAAAECAxEEITESBSJBYTJRgaEUcdETIzNxgZLB/9oADAIRAxEAPwD5/rUf6ypt9aT7ldDWoP1jTfWk+5XW0Vj8yT6r8L8Kj8wT6r8L8KjO4y/J/h/wCC+4g1rB+vqb60n3K6GtYf1/TfWk+5XW1Qn1X4X4V0NUJ9V+F+FdS/28fH+vqX+5/qv+f0OJrWH9f031pPuVdDW0P6/pvjSfcrt1Qn1X4X4V1NUI9V+F+FB/bx8f6+pP7n+q/5/Q4WtYf1/TfWk+5XU9bw/r+m+NJ9yuTKhHqvwy/wDrXUyoR6r8L8qF9tb4/19Sf3P9V/z+hwtaQ/r+m+NJ9yuhrSH9f031pPuVx8qIeq/Df8AdXOyoB6r8L8qP7ePj/X1J/c/1X/AD+hzdaQ/r+m+NJ9yuhrSH9f03xpPuVxsqAes/C/CuNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dm60h/X9N9aT7ldTWkP6/pvrSfcriZUA9Z+F+FcNlQD1n4X4UH9vHx/r6k/uf6r/n9Dk63h/X9N8aT7lcjrWF9f03xpPuVyMv/ADBPqvwvwrkMv/ADBPqvwvwrhuttk/4f19TUs91n/P6HN1vC/r+m+NJ9yuo63hfX9N9aT7lcjL/zBPqvwvwrky/8wT6r8L8KrfbbPx/r6k/uf6r/n9Dm63h/X9N9aT7ldTW8P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpP7bZ/H+vqT+5/qv+f0OTreH9f031pPuVdTW0P6/pvrSfcrl5f+YJ9V+F+FcjL/zBPqvwvwpX22yf8f6+pP7n+q/5/Q//9k=',
         };
 
-        // --- COMPONENTS ---
-        const TrafficLightRed = () => (
-            <div className="w-20 h-28 md:w-32 md:h-44 bg-slate-800 rounded-2xl flex flex-col items-center justify-center p-2 border-4 border-slate-600 shadow-xl space-y-2">
-                <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-red-500 shadow-[0_0_20px_rgba(239,68,68,1)] animate-pulse" />
-                <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-slate-700/50" />
-                <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-slate-700/50" />
-            </div>
-        );
-        const TrafficLightGreen = () => (
-            <div className="w-20 h-28 md:w-32 md:h-44 bg-slate-800 rounded-2xl flex flex-col items-center justify-center p-2 border-4 border-slate-600 shadow-xl space-y-2">
-                <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-slate-700/50" />
-                <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-slate-700/50" />
-                <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-green-500 shadow-[0_0_20px_rgba(34,197,94,1)] animate-pulse" />
-            </div>
-        );
+        // 测验题目数据
+        const quizData = [
+            // Part A: 听力 (Listening) - 5 questions * 5 points
+            { qNum: 1, part: 'A', type: 'select', text: '请点击小喇叭听录音，然后选择与录音内容匹配的图片。', audioText: 'I have five ice creams.', options: [imageUris['3 Items'], imageUris['5 Items'], imageUris['9 Items'], imageUris['4 Items']], correct: imageUris['5 Items'], hint: '注意数字 $five$ 对应哪个数量。' },
+            { qNum: 2, part: 'A', type: 'select', text: '请点击小喇叭听录音，然后选择与录音内容匹配的图片。', audioText: 'Count the number to ten.', options: [imageUris['3 Items'], imageUris['5 Items'], imageUris['10 Items'], imageUris['4 Items']], correct: imageUris['10 Items'], hint: '仔细听数字词 $ten$ 的发音。' },
+            { qNum: 3, part: 'A', type: 'select', text: '请点击小喇叭听录音，然后选择与录音内容匹配的中文意思。', audioText: 'Let’s play a game!', options: ['让我们玩游戏！', '你叫什么名字？', '这是我的朋友。', '很高兴见到你！'], correct: '让我们玩游戏！', hint: '句型 $Let\'s$ 表示什么意思呢？' },
+            { qNum: 4, part: 'A', type: 'fill', text: '请点击小喇叭听录音，然后输入单词拼写。', audioText: 'The number is three.', correct: 'three', hint: '这个数字词以 t 开头。' },
+            { qNum: 5, part: 'A', type: 'fill', text: '请点击小喇叭听录音，然后输入单词拼写。', audioText: 'OK, Let’s play!', correct: 'play', hint: '这个单词是表示“玩耍”的动词。' },
 
-        // --- MAIN APP ---
-        function App() {
-            const [view, setView] = useState('HOME');
-            const [activeModule, setActiveModule] = useState(null);
-            const [levelIndex, setLevelIndex] = useState(0);
-            const [hearts, setHearts] = useState(5);
-            const [status, setStatus] = useState('idle');
-            const [progress, setProgress] = useState(0);
-            
-            const [buildSelected, setBuildSelected] = useState([]);
-            const [buildBank, setBuildBank] = useState([]);
-            const [matchSolved, setMatchSolved] = useState([]);
-            const [matchSelected, setMatchSelected] = useState(null);
-            const [choiceSelected, setChoiceSelected] = useState(null);
-            const [canvasDrawn, setCanvasDrawn] = useState(false);
-            
-            const canvasRef = useRef(null);
-            const isDrawing = useRef(false);
+            // Part B: 阅读 (Reading) - 5 questions * 5 points
+            { qNum: 6, part: 'B', type: 'drag-sort', text: '请将下列词块拖拽排序，组成一个正确的句子。', words: ['apple', 'is', 'This', 'an', '.'], correct: 'This is an apple.', hint: '句型 This is an...' },
+            { qNum: 7, part: 'B', type: 'drag-sort', text: '请将下列词块拖拽排序，组成一个正确的句子。', words: ['park.', 'Let\'s', 'in the', 'play'], correct: 'Let\'s play in the park.', hint: '句子 $Let\'s$ 开头。' },
+            { qNum: 8, part: 'B', type: 'select', text: '请选择与英文数字词汇 "six" 对应的数量图片。', options: [imageUris['4 Items'], imageUris['9 Items'], imageUris['6 Items'], imageUris['3 Items']], correct: imageUris['6 Items'], hint: '数字 six 是几？' },
+            { qNum: 9, part: 'B', type: 'fill', text: '看图回答问题，用一个英文单词作答：How many pencils?', imageUri: imageUris['4 Pencils'], correct: 'four', hint: '图片中是 4 支铅笔。' },
+            { qNum: 10, part: 'B', type: 'select', text: '看图，选出这个场景对应的英文单词。', imageUri: imageUris['Park Scene'], options: ['school', 'park', 'home', 'zoo'], correct: 'park', hint: '这个单词是 Unit 2 学习的场景词。' },
 
-            // Safe Access for iOS 12 (avoid ?. operator)
-            const currentLevel = activeModule && activeModule.levels ? activeModule.levels[levelIndex] : null;
+            // Part C: 写作 (Writing) - 5 questions * 5 points
+            { qNum: 11, part: 'C', type: 'drag-sort', text: '请将下列词块拖拽排序，组成一个正确的句子。', words: ['nice.', 'is', 'This', 'jacket'], correct: 'This jacket is nice.', hint: '先说“这件夹克”，再说“很好”。' },
+            { qNum: 12, part: 'C', type: 'drag-sort', text: '请将下列词块拖拽排序，组成一个正确的句子。', words: ['meet', 'Nice', 'you.', 'to'], correct: 'Nice to meet you.', hint: '常用的问候语。' },
+            { qNum: 13, part: 'C', type: 'fill', text: '请根据中文提示完成句子：Let\'s _______ (玩) a game.', correct: 'play', hint: '“玩”的英文是 p 开头。' },
+            { qNum: 14, part: 'C', type: 'fill', text: '看图完成对话。A: How are you? B: I\'m ______!', imageUri: imageUris['Great Sign'], correct: 'great', hint: '图片里的手势代表什么？g 开头。' },
+            { qNum: 15, part: 'C', type: 'fill', text: '看图写出对应的英文数字单词。', imageUri: imageUris['Number 5'], correct: 'five', hint: '图片是数字 5。' }
+        ];
 
-            useEffect(() => {
-                if (!currentLevel) return;
-                setStatus('idle');
-                setBuildSelected([]);
-                setMatchSolved([]);
-                setMatchSelected(null);
-                setChoiceSelected(null);
-                setCanvasDrawn(false);
-                
-                if (currentLevel.audioPrompt) {
-                    setTimeout(() => AudioEngine.speak(currentLevel.audioPrompt), 500);
-                } else if (currentLevel.type === 'audio_choice') {
-                    setTimeout(() => AudioEngine.speak(currentLevel.audioText), 500);
-                }
-                
-                if (currentLevel.type === 'build') {
-                    setBuildBank(currentLevel.words.map((w, i) => ({ id: i, text: w, used: false })));
-                }
-            }, [levelIndex, currentLevel]);
+        // 全局变量
+        let currentStudentId = null;
+        let timerInterval;
+        let timeRemaining = 540; // 9 分钟 = 540 秒
+        let allScores = JSON.parse(localStorage.getItem('quizScores')) || []; // 从本地存储读取成绩
 
-            // Auto Check Match Pairs
-            useEffect(() => {
-                if (currentLevel && currentLevel.type === 'match_pairs') {
-                    if (matchSolved.length === currentLevel.pairs.length && matchSolved.length > 0) {
-                        handleSuccess();
-                    }
-                }
-            }, [matchSolved]);
+        // 语音合成API
+        const synth = window.speechSynthesis;
 
-            const startModule = (mod) => {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (AudioContext) { const ctx = new AudioContext(); ctx.resume(); }
+        // ------------------------- 2. 初始化函数 -------------------------
+        
+        // 初始化学生选择器
+        function initStudentSelector() {
+            const selector = document.getElementById('studentSelector');
+            // 检查是否所有学生都已完成测验
+            const completedStudentIds = allScores.map(s => s.studentId);
+            const availableStudents = studentList.filter(s => !completedStudentIds.includes(s.id));
 
-                setActiveModule(mod);
-                setLevelIndex(0);
-                setHearts(5);
-                setProgress(0);
-                setView('GAME');
-            };
-
-            const handleSuccess = () => {
-                setStatus('correct');
-                AudioEngine.playDing();
-                if (currentLevel && currentLevel.targetSentence) AudioEngine.speak(currentLevel.targetSentence);
-            };
-
-            const handleError = () => {
-                setStatus('wrong');
-                AudioEngine.playBoop();
-                setHearts(h => Math.max(0, h - 1));
-            };
-
-            const nextLevel = () => {
-                if (activeModule && levelIndex < activeModule.levels.length - 1) {
-                    const newIndex = levelIndex + 1;
-                    setLevelIndex(newIndex);
-                    setProgress(((newIndex + 2) / (activeModule.levels.length + 1)) * 100);
-                } else {
-                    setView('FINISHED');
-                    AudioEngine.playDing();
-                }
-            };
-
-            const checkAnswer = () => {
-                if (status !== 'idle') { nextLevel(); return; }
-                if (!currentLevel) return;
-                
-                let isCorrect = false;
-                if (currentLevel.type === 'build') {
-                    const separator = currentLevel.targetSentence.indexOf(' ') >= 0 ? ' ' : '';
-                    const sentence = buildSelected.join(separator);
-                    isCorrect = sentence === currentLevel.targetSentence;
-                } else if (currentLevel.type === 'audio_choice' || currentLevel.type === 'picture_choice') {
-                    const opt = currentLevel.options.filter(o => o.id === choiceSelected)[0];
-                    isCorrect = opt && opt.isCorrect;
-                } else if (currentLevel.type === 'tracing') {
-                    isCorrect = canvasDrawn;
-                } else if (currentLevel.type === 'missing_letter') {
-                    isCorrect = choiceSelected === currentLevel.correctOption;
-                }
-
-                if (isCorrect) handleSuccess(); else handleError();
-            };
-
-            // Canvas Logic
-            const getCoords = (e) => {
-                const rect = canvasRef.current.getBoundingClientRect();
-                let clientX, clientY;
-                if (e.touches && e.touches.length > 0) {
-                    clientX = e.touches[0].clientX;
-                    clientY = e.touches[0].clientY;
-                } else {
-                    clientX = e.clientX;
-                    clientY = e.clientY;
-                }
-                return { 
-                    x: (clientX - rect.left) * (canvasRef.current.width / rect.width), 
-                    y: (clientY - rect.top) * (canvasRef.current.height / rect.height) 
-                };
-            };
-
-            const startDraw = (e) => {
-                isDrawing.current = true;
-                const ctx = canvasRef.current.getContext('2d');
-                ctx.lineWidth = 15; ctx.lineCap = 'round'; ctx.strokeStyle = '#3b82f6';
-                const coords = getCoords(e);
-                ctx.beginPath(); ctx.moveTo(coords.x, coords.y);
-                setCanvasDrawn(true);
-            };
-            const draw = (e) => {
-                if (!isDrawing.current) return;
-                const ctx = canvasRef.current.getContext('2d');
-                const coords = getCoords(e);
-                ctx.lineTo(coords.x, coords.y); ctx.stroke();
-            };
-            const endDraw = () => { isDrawing.current = false; };
-            const clearCanvas = () => {
-                const ctx = canvasRef.current.getContext('2d');
-                ctx.clearRect(0, 0, 600, 600);
-                setCanvasDrawn(false);
-            };
-
-            // VIEWS
-            if (view === 'HOME') {
-                return (
-                    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 space-y-8">
-                        <div className="text-center">
-                            <h1 className="text-4xl md:text-6xl font-black text-slate-700 mb-2">English Quiz</h1>
-                            <p className="text-xl text-slate-400">Select a lesson</p>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl">
-                            {MODULES.map(m => (
-                                <button key={m.id} onClick={() => startModule(m)} className="bg-white p-6 md:p-8 rounded-3xl border-4 border-slate-200 shadow-lg flex items-center space-x-6 text-left group active:scale-95 transition-transform">
-                                    <div className={`w-20 h-20 ${m.themeColor} rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-inner`}>Aa</div>
-                                    <div>
-                                        <h2 className="text-2xl md:text-3xl font-bold text-slate-700">{m.title}</h2>
-                                        <p className="text-slate-400 text-lg">{m.description}</p>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                );
+            if (availableStudents.length === 0) {
+                selector.innerHTML = '<option value="" disabled selected>所有学生已完成测验</option>';
+                document.getElementById('startButton').disabled = true;
+                document.getElementById('exportButton').style.display = 'block'; // 显示导出按钮
+            } else {
+                selector.innerHTML = '<option value="" selected disabled>请选择姓名</option>';
+                availableStudents.forEach(student => {
+                    const option = document.createElement('option');
+                    option.value = student.id;
+                    option.textContent = `${student.id}号 - ${student.name}`;
+                    selector.appendChild(option);
+                });
+                document.getElementById('exportButton').style.display = 'none';
             }
-
-            if (view === 'FINISHED') {
-                return (
-                    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4 text-center space-y-6">
-                        <div className="text-8xl animate-bounce"><IconFlame className="w-32 h-32 text-orange-500 mx-auto"/></div>
-                        <h1 className="text-5xl font-black text-slate-800">Great Job!</h1>
-                        <button onClick={() => setView('HOME')} className="bg-blue-500 text-white px-8 py-4 rounded-full text-xl font-bold flex items-center space-x-2 active:bg-blue-600 transition-colors mx-auto">
-                            <IconHome className="w-6 h-6"/> <span>Back Home</span>
-                        </button>
-                    </div>
-                );
-            }
-
-            // GAME
-            return (
-                <div className="fixed inset-0 flex flex-col bg-slate-50">
-                    {/* Header */}
-                    <div className="h-16 bg-white border-b flex items-center px-4 justify-between shrink-0 safe-top">
-                        <button onClick={() => setView('HOME')}><IconArrowLeft className="w-8 h-8 text-slate-400"/></button>
-                        <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden mx-4">
-                            <div className="h-full bg-green-500 transition-all duration-500" style={{width: progress + '%'}}></div>
-                        </div>
-                        <div className="flex items-center space-x-1 text-red-500 font-bold text-2xl">
-                            <IconHeart className="w-8 h-8"/> <span>{hearts}</span>
-                        </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 overflow-y-auto scrollbar-hide p-4 flex flex-col items-center justify-center w-full max-w-6xl mx-auto">
-                        
-                        {/* BUILD */}
-                        {currentLevel.type === 'build' && (
-                            <div className="w-full h-full flex flex-col justify-between py-4 space-y-4">
-                                <div className="text-center space-y-4">
-                                    <h2 className="text-2xl md:text-4xl font-bold text-slate-400">BUILD THE SENTENCE</h2>
-                                    <div className="text-4xl md:text-6xl font-bold text-slate-800 flex flex-col items-center space-y-2">
-                                        <span>{currentLevel.chinese}</span>
-                                        <button onClick={()=>AudioEngine.speak(currentLevel.targetSentence)} className="bg-blue-100 text-blue-500 rounded-full p-2"><IconVolume className="w-6 h-6"/></button>
-                                    </div>
-                                </div>
-                                <div className="flex flex-wrap justify-center min-h-[80px] border-b-4 border-slate-200 p-4">
-                                    {buildSelected.map((w, i) => (
-                                        <button key={i} onClick={() => {
-                                            const newSel = [...buildSelected]; newSel.splice(i, 1); setBuildSelected(newSel);
-                                            setBuildBank(prev => prev.map(bw => bw.text === w && bw.used ? { ...bw, used: false } : bw));
-                                        }} className="bg-white border-2 border-slate-200 px-4 py-2 rounded-xl text-2xl md:text-4xl font-bold shadow-sm m-1">{w}</button>
-                                    ))}
-                                </div>
-                                <div className="flex flex-wrap justify-center">
-                                    {buildBank.map((item, i) => (
-                                        <button key={i} onClick={() => {
-                                            if(item.used) return;
-                                            setBuildSelected([...buildSelected, item.text]);
-                                            setBuildBank(prev => prev.map(bw => bw.id === item.id ? { ...bw, used: true } : bw));
-                                            AudioEngine.speak(item.text);
-                                        }} className={`px-6 py-3 m-2 rounded-xl border-b-4 text-2xl md:text-4xl font-bold transition-all ${item.used ? 'opacity-0 pointer-events-none' : 'bg-white border-slate-200 text-slate-700 active:translate-y-1'}`}>{item.text}</button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* MATCH */}
-                        {currentLevel.type === 'match_pairs' && (
-                            <div className="w-full h-full flex flex-col">
-                                <h2 className="text-xl text-center font-bold text-slate-400 mb-4">{currentLevel.prompt}</h2>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 flex-1 content-center">
-                                    {currentLevel.pairs.map(p => {
-                                        const isSolved = matchSolved.indexOf(p.id) !== -1;
-                                        const isSelected = matchSelected === p.id;
-                                        return (
-                                            <button key={p.id} disabled={isSolved} onClick={() => {
-                                                if(isSelected) { setMatchSelected(null); return; }
-                                                if(!matchSelected) { setMatchSelected(p.id); if(p.lang==='en') AudioEngine.speak(p.text); return; }
-                                                const prev = currentLevel.pairs.filter(i => i.id === matchSelected)[0];
-                                                if(prev && prev.pairId === p.pairId) {
-                                                    setMatchSolved([...matchSolved, prev.id, p.id]); setMatchSelected(null); AudioEngine.playDing();
-                                                } else {
-                                                    setMatchSelected(null); AudioEngine.playBoop();
-                                                }
-                                            }} className={`rounded-2xl border-4 min-h-[80px] md:min-h-[140px] flex items-center justify-center p-2 text-xl md:text-4xl font-bold transition-all ${isSolved ? 'opacity-0 pointer-events-none' : isSelected ? 'bg-blue-100 border-blue-500 text-blue-600' : 'bg-white border-slate-200 text-slate-700'}`}>
-                                                {p.lang === 'image' ? <span className="text-5xl md:text-7xl">{p.text}</span> : p.text}
-                                            </button>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* CHOICE */}
-                        {(currentLevel.type === 'audio_choice' || currentLevel.type === 'picture_choice') && (
-                            <div className="w-full flex flex-col items-center space-y-6 md:space-y-10">
-                                <h2 className="text-2xl md:text-4xl font-bold text-slate-700 text-center">{currentLevel.prompt}</h2>
-                                <div className="p-4">
-                                    {currentLevel.type === 'audio_choice' && <button onClick={() => AudioEngine.speak(currentLevel.audioText)} className="w-32 h-32 md:w-48 md:h-48 bg-blue-500 rounded-full flex items-center justify-center shadow-lg active:scale-95 text-white"><IconVolume className="w-16 h-16"/></button>}
-                                    {currentLevel.type === 'picture_choice' && currentLevel.iconType === 'green_light' && <TrafficLightGreen />}
-                                    {currentLevel.type === 'picture_choice' && currentLevel.iconType === 'question' && <span className="text-8xl">❓</span>}
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
-                                    {currentLevel.options.map(opt => (
-                                        <button key={opt.id} onClick={() => { setChoiceSelected(opt.id); if(opt.text) AudioEngine.speak(opt.text); }} className={`py-6 px-4 rounded-xl border-4 text-2xl md:text-3xl font-bold transition-all ${choiceSelected === opt.id ? 'bg-blue-100 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-700'}`}>
-                                            {opt.text}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* REACTION */}
-                        {currentLevel.type === 'color_reaction' && (
-                            <div className="flex flex-col items-center space-y-8 w-full">
-                                <h2 className="text-4xl md:text-6xl font-black text-slate-800 animate-bounce">{currentLevel.prompt}</h2>
-                                <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6 w-full h-64 md:h-96">
-                                    <button onClick={() => currentLevel.targetColor==='red' ? handleSuccess() : handleError()} className="flex-1 bg-red-500 rounded-3xl border-b-8 border-red-700 active:border-b-0 active:translate-y-2 flex items-center justify-center"><div className="w-24 h-24 bg-red-400 rounded-full animate-pulse"/></button>
-                                    <button onClick={() => currentLevel.targetColor==='green' ? handleSuccess() : handleError()} className="flex-1 bg-green-500 rounded-3xl border-b-8 border-green-700 active:border-b-0 active:translate-y-2 flex items-center justify-center"><div className="w-24 h-24 bg-green-400 rounded-full animate-pulse"/></button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* TRACING */}
-                        {currentLevel.type === 'tracing' && (
-                            <div className="flex flex-col items-center space-y-4 w-full">
-                                <h2 className="text-2xl font-bold text-slate-400">Trace the letter</h2>
-                                <div className="relative bg-white rounded-3xl shadow-inner border-4 border-slate-200 overflow-hidden canvas-container" style={{width:'min(80vw, 500px)', height:'min(80vw, 500px)'}}>
-                                    <div className="absolute inset-0 flex items-center justify-center text-[250px] md:text-[300px] text-slate-100 font-serif select-none pointer-events-none" style={{lineHeight:1}}>{currentLevel.letter}</div>
-                                    <canvas ref={canvasRef} width={600} height={600} className="w-full h-full cursor-crosshair relative z-10"
-                                        onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
-                                        onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw}
-                                    />
-                                </div>
-                                <button onClick={clearCanvas} className="bg-slate-200 px-6 py-2 rounded-full font-bold text-slate-600 flex items-center space-x-2"><IconEraser className="w-5 h-5"/> <span>Clear</span></button>
-                            </div>
-                        )}
-
-                        {/* MISSING LETTER */}
-                        {currentLevel.type === 'missing_letter' && (
-                            <div className="flex flex-col items-center space-y-8">
-                                <div className="flex items-end space-x-1">
-                                    {currentLevel.displayWord.split('_').map((part, i) => (
-                                        <React.Fragment key={i}>
-                                            <span className="text-6xl md:text-8xl font-mono text-slate-400">{part}</span>
-                                            {i === 0 && <span className="text-6xl md:text-8xl font-bold text-blue-500 border-b-8 border-blue-500 min-w-[3rem] text-center px-2">{choiceSelected || '?'}</span>}
-                                        </React.Fragment>
-                                    ))}
-                                </div>
-                                <div className="flex space-x-4">
-                                    {currentLevel.options.map(o => (
-                                        <button key={o} onClick={() => setChoiceSelected(o)} className={`w-24 h-24 rounded-2xl text-5xl font-bold border-b-8 transition-all ${choiceSelected === o ? 'bg-blue-500 border-blue-700 text-white' : 'bg-white border-slate-200 text-slate-700'}`}>{o}</button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="h-24 bg-white border-t border-slate-100 flex items-center justify-between px-6 shrink-0 safe-bottom">
-                        <div className="flex-1">
-                            {status === 'correct' && <div className="text-green-500 font-black text-3xl animate-bounce flex items-center space-x-2"><IconCheck className="w-8 h-8"/> <span>GOOD!</span></div>}
-                            {status === 'wrong' && <div className="text-red-500 font-black text-3xl animate-shake flex items-center space-x-2"><IconX className="w-8 h-8"/> <span>TRY AGAIN</span></div>}
-                        </div>
-                        {currentLevel.type !== 'color_reaction' && (
-                            <button onClick={checkAnswer} className={`px-10 py-4 rounded-2xl font-black text-2xl uppercase shadow-lg active:scale-95 transition-all ${status === 'idle' ? 'bg-green-500 text-white shadow-green-200' : status === 'correct' ? 'bg-blue-500 text-white' : 'bg-red-500 text-white'}`}>
-                                {status === 'idle' ? 'Check' : 'Next'}
-                            </button>
-                        )}
-                    </div>
-                </div>
-            );
         }
 
-        ReactDOM.render(<App />, document.getElementById('root'));
+        // 启用开始按钮
+        function enableStartButton() {
+            const selector = document.getElementById('studentSelector');
+            document.getElementById('startButton').disabled = selector.value === "";
+        }
+
+        // ------------------------- 3. 测验流程控制 -------------------------
+
+        // 开始测验
+        function startQuiz() {
+            const selector = document.getElementById('studentSelector');
+            currentStudentId = selector.value;
+            const studentName = studentList.find(s => s.id === currentStudentId).name;
+
+            if (!currentStudentId) return;
+
+            document.getElementById('coverPage').style.display = 'none';
+            document.getElementById('quizContainer').style.display = 'block';
+            document.getElementById('fixedHeader').style.display = 'flex';
+            document.getElementById('studentDisplay').textContent = `考生: ${studentName}`;
+            
+            renderQuiz();
+            startTimer();
+        }
+
+        // 开始计时器
+        function startTimer() {
+            timeRemaining = 540;
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    submitQuiz(true); // 时间到自动提交
+                }
+            }, 1000);
+        }
+
+        // 更新计时器显示
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            document.getElementById('timerDisplay').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // 最后1分钟变红提醒
+            if (timeRemaining < 60) {
+                document.getElementById('timerDisplay').style.color = 'red';
+            }
+        }
+
+        // ------------------------- 4. 题目渲染核心逻辑 -------------------------
+
+        // 渲染整个测验页面
+        function renderQuiz() {
+            const container = document.getElementById('quizContainer');
+            // 清空容器，保留固定头部和成绩卡
+            Array.from(container.children).forEach(child => {
+                if (child.id !== 'fixedHeader' && child.id !== 'scoreCard') {
+                    container.removeChild(child);
+                }
+            });
+
+            let currentPart = '';
+            
+            quizData.forEach((question, index) => {
+                // 添加部分标题
+                if (question.part !== currentPart) {
+                    currentPart = question.part;
+                    const partTitle = document.createElement('h3');
+                    partTitle.style.margin = '20px 15px 10px';
+                    partTitle.style.color = '#007bff';
+                    if (currentPart === 'A') partTitle.textContent = 'Part A: 听力理解 (每题5分)';
+                    if (currentPart === 'B') partTitle.textContent = 'Part B: 阅读理解 (每题5分)';
+                    if (currentPart === 'C') partTitle.textContent = 'Part C: 书写与拼写 (每题5分)';
+                    container.appendChild(partTitle);
+                }
+
+                // 创建题目卡片
+                const questionPage = document.createElement('div');
+                questionPage.className = 'question-page';
+                questionPage.id = `question-${index}`;
+
+                // 题目文本 (包含序号和提示按钮)
+                let hintHtml = question.hint ? ` <span style="color:#007bff; cursor:pointer;" onclick="alert('${question.hint.replace(/'/g, "\\'")}')">💡提示</span>` : '';
+                let questionTextHtml = `<p class="question-content"><b>${question.qNum}.</b> ${question.text}${hintHtml}</p>`;
+
+                // 插入题干图片 (如果有) - 优化样式
+                if (question.imageUri) {
+                    questionTextHtml += `<img src="${question.imageUri}" alt="Question Image" class="question-image-style">`;
+                }
+
+                questionPage.innerHTML = questionTextHtml;
+
+                // 根据题目类型渲染选项区域
+                if (question.type === 'select') {
+                    renderSelectOptions(questionPage, question, index);
+                } else if (question.type === 'fill') {
+                    renderFillInput(questionPage, index);
+                } else if (question.type === 'drag-sort') {
+                    renderDragSort(questionPage, question, index);
+                }
+
+                container.appendChild(questionPage);
+            });
+
+            // 添加提交按钮
+            const submitBtn = document.createElement('button');
+            submitBtn.className = 'start-button';
+            submitBtn.style.width = '90%';
+            submitBtn.style.margin = '20px auto';
+            submitBtn.style.display = 'block';
+            submitBtn.textContent = '📝 提交试卷';
+            submitBtn.onclick = () => submitQuiz(false);
+            container.appendChild(submitBtn);
+        }
+        
+        // 播放音频功能 (使用浏览器自带的 SpeechSynthesis)
+        function playAudio(text, buttonId) {
+            if (synth.speaking) {
+                synth.cancel();
+            }
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.9; // 稍微放慢语速适合小学生
+            
+            const button = document.getElementById(buttonId);
+            button.style.color = 'green'; // 播放时变绿
+            
+            utterance.onend = function() {
+                button.style.color = '#007bff'; // 播放结束恢复
+            };
+            
+            synth.speak(utterance);
+        }
+
+        // 渲染选择题选项 (支持文本和图片) - 核心优化
+        function renderSelectOptions(container, question, index) {
+            // 听力题添加播放按钮
+            if (question.part === 'A' && question.audioText) {
+                const audioBtnId = `audio-btn-${index}`;
+                const audioButton = document.createElement('button');
+                audioButton.innerHTML = '🔊 点击播放录音';
+                audioButton.className = 'selector-style';
+                audioButton.style.width = 'auto';
+                audioButton.style.padding = '5px 15px';
+                audioButton.style.marginBottom = '15px';
+                audioButton.style.color = '#007bff';
+                audioButton.style.border = '2px solid #007bff';
+                audioButton.style.cursor = 'pointer';
+                audioButton.id = audioBtnId;
+                audioButton.onclick = () => playAudio(question.audioText, audioBtnId);
+                // 将播放按钮插入到题目文本之后，选项之前
+                container.insertBefore(audioButton, container.lastChild.nextSibling);
+            }
+
+            const isImageOptions = question.options[0] && question.options[0].startsWith('data:image');
+            
+            // 如果是图片选项，使用 Grid 容器
+            if (isImageOptions) {
+                const gridContainer = document.createElement('div');
+                gridContainer.className = 'image-option-container';
+                
+                question.options.forEach((optionData, optIndex) => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'answer-option image-option';
+                    optionDiv.onclick = () => selectOption(index, optIndex);
+                    optionDiv.dataset.optIndex = optIndex;
+                    
+                    // 添加 A/B/C/D 标签
+                    const label = document.createElement('span');
+                    label.className = 'option-label';
+                    label.textContent = String.fromCharCode(65 + optIndex); // A, B, C, D
+                    optionDiv.appendChild(label);
+
+                    // 添加图片 - 优化样式
+                    const img = document.createElement('img');
+                    img.src = optionData;
+                    img.alt = `Option ${optIndex + 1}`;
+                    img.className = 'option-image-style';
+                    optionDiv.appendChild(img);
+                    
+                    gridContainer.appendChild(optionDiv);
+                });
+                container.appendChild(gridContainer);
+
+            } else {
+                // 文本选项 (保持原有纵向排列)
+                question.options.forEach((optionText, optIndex) => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'answer-option';
+                    optionDiv.onclick = () => selectOption(index, optIndex);
+                    optionDiv.dataset.optIndex = optIndex;
+                    
+                    optionDiv.innerHTML = `<span class="answer-option-text"><b>${String.fromCharCode(65 + optIndex)}.</b> ${optionText}</span>`;
+                    container.appendChild(optionDiv);
+                });
+            }
+        }
+
+        // 渲染填空题输入框
+        function renderFillInput(container, index) {
+            // 听力题添加播放按钮 (逻辑同上)
+            if (quizData[index].part === 'A' && quizData[index].audioText) {
+                const audioBtnId = `audio-fill-btn-${index}`;
+                const audioButton = document.createElement('button');
+                audioButton.innerHTML = '🔊 点击播放录音';
+                audioButton.className = 'selector-style';
+                audioButton.style.width = 'auto';
+                audioButton.style.padding = '5px 15px';
+                audioButton.style.marginBottom = '15px';
+                audioButton.style.color = '#007bff';
+                audioButton.style.border = '2px solid #007bff';
+                audioButton.style.cursor = 'pointer';
+                audioButton.id = audioBtnId;
+                audioButton.onclick = () => playAudio(quizData[index].audioText, audioBtnId);
+                container.insertBefore(audioButton, container.lastChild.nextSibling);
+            }
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'selector-style';
+            input.style.textAlign = 'left';
+            input.placeholder = '请输入答案...';
+            input.dataset.qIndex = index;
+            container.appendChild(input);
+        }
+
+        // 渲染拖拽排序题 (简化版：点击单词添加到结果区)
+        function renderDragSort(container, question, index) {
+            const wordBank = document.createElement('div');
+            wordBank.style.marginBottom = '15px';
+            wordBank.style.display = 'flex';
+            wordBank.style.flexWrap = 'wrap';
+            wordBank.style.gap = '10px';
+            
+            const resultArea = document.createElement('div');
+            resultArea.className = 'selector-style';
+            resultArea.style.minHeight = '48px';
+            resultArea.style.textAlign = 'left';
+            resultArea.style.padding = '10px';
+            resultArea.dataset.qIndex = index;
+            resultArea.dataset.answers = ''; // 存储当前排序结果
+
+            // 简单的点击添加逻辑，暂不实现复杂拖拽
+            question.words.forEach(word => {
+                const wordChip = document.createElement('button');
+                wordChip.textContent = word;
+                wordChip.style.padding = '5px 15px';
+                wordChip.style.borderRadius = '20px';
+                wordChip.style.border = '1px solid #007bff';
+                wordChip.style.backgroundColor = 'white';
+                wordChip.style.color = '#007bff';
+                
+                wordChip.onclick = function() {
+                    const currentText = resultArea.textContent;
+                    // 简单处理句号和空格
+                    const spacer = (currentText === '' || word === '.') ? '' : ' ';
+                    resultArea.textContent += spacer + word;
+                    
+                    // 更新存储的答案值
+                    let currentAnswers = resultArea.dataset.answers ? JSON.parse(resultArea.dataset.answers) : [];
+                    currentAnswers.push(word);
+                    resultArea.dataset.answers = JSON.stringify(currentAnswers);
+
+                    this.disabled = true;
+                    this.style.opacity = 0.5;
+                };
+                wordBank.appendChild(wordChip);
+            });
+
+            // 添加重置按钮
+            const resetBtn = document.createElement('button');
+            resetBtn.textContent = '🔄 重置';
+            resetBtn.style.marginTop = '10px';
+            resetBtn.style.padding = '5px 10px';
+            resetBtn.style.fontSize = '0.9em';
+            resetBtn.onclick = function() {
+                resultArea.textContent = '';
+                resultArea.dataset.answers = '';
+                Array.from(wordBank.children).forEach(btn => {
+                    btn.disabled = false;
+                    btn.style.opacity = 1;
+                });
+            };
+            
+            container.appendChild(wordBank);
+            container.appendChild(resultArea);
+            container.appendChild(resetBtn);
+        }
+
+
+        // ------------------------- 5. 交互逻辑 -------------------------
+
+        // 处理选择题点击
+        function selectOption(qIndex, optIndex) {
+            const questionPage = document.getElementById(`question-${qIndex}`);
+            const options = questionPage.getElementsByClassName('answer-option');
+            Array.from(options).forEach(opt => opt.classList.remove('selected-option'));
+            options[optIndex].classList.add('selected-option');
+            // 存储答案
+            questionPage.dataset.selectedOption = optIndex;
+        }
+
+        // ------------------------- 6. 提交与评分 -------------------------
+
+        // 提交测验
+        function submitQuiz(isTimeOut) {
+            clearInterval(timerInterval);
+            if (isTimeOut) {
+                alert('时间到！系统已自动提交试卷。');
+            } else if (!confirm('确定要提交试卷吗？提交后将无法修改答案。')) {
+                startTimer(); // 如果取消提交，恢复计时
+                return;
+            }
+
+            // 收集答案
+            const userAnswers = quizData.map((q, index) => {
+                const questionPage = document.getElementById(`question-${index}`);
+                if (q.type === 'select') {
+                    const selectedOptIndex = questionPage.dataset.selectedOption;
+                    return selectedOptIndex !== undefined ? q.options[selectedOptIndex] : null;
+                } else if (q.type === 'fill') {
+                    const input = questionPage.querySelector('input');
+                    return input.value.trim().toLowerCase();
+                } else if (q.type === 'drag-sort') {
+                    const resultArea = questionPage.querySelector('.selector-style[data-answers]');
+                    // 获取文本内容进行比较
+                    return resultArea.textContent.trim();
+                }
+                return null;
+            });
+
+            calculateAndShowScore(userAnswers);
+        }
+
+        // 计算并显示成绩
+        function calculateAndShowScore(userAnswers) {
+            let score = 0;
+            const pointsPerQuestion = 5; // 总分75 / 15题 = 5分/题
+
+            userAnswers.forEach((answer, index) => {
+                const correctAnswer = quizData[index].correct;
+                // 对于填空和排序，进行不区分大小写的比较，并去除多余空格
+                if (answer && answer.toLowerCase().replace(/\s+/g, ' ').trim() === correctAnswer.toLowerCase().replace(/\s+/g, ' ').trim()) {
+                    score += pointsPerQuestion;
+                }
+            });
+
+            // 保存成绩
+            const studentName = studentList.find(s => s.id === currentStudentId).name;
+            allScores.push({
+                studentId: currentStudentId,
+                studentName: studentName,
+                score: score,
+                timeUsed: 540 - timeRemaining,
+                date: new Date().toLocaleString()
+            });
+            localStorage.setItem('quizScores', JSON.stringify(allScores));
+
+            // 显示成绩卡
+            const container = document.getElementById('quizContainer');
+            // 隐藏所有题目页面和提交按钮
+            Array.from(container.children).forEach(child => {
+                if (child.id !== 'fixedHeader' && child.id !== 'scoreCard') {
+                    child.style.display = 'none';
+                }
+            });
+
+            const scoreCard = document.getElementById('scoreCard');
+            scoreCard.style.display = 'block';
+            scoreCard.className = 'intro-card'; // 复用卡片样式
+            scoreCard.style.marginTop = '100px';
+
+            document.getElementById('finalScore').textContent = `${studentName}同学，你的得分是：${score} 分`;
+            
+            let feedback = '';
+            if (score === 75) feedback = '🎉 太棒了！满分！你真是英语小天才！';
+            else if (score >= 60) feedback = '👏 做得不错！继续加油，下次争取满分！';
+            else feedback = '💪 还要加把劲哦！回头再复习一下Unit 2的内容吧。';
+            document.getElementById('gradeFeedback').textContent = feedback;
+
+            document.getElementById('fixedHeader').style.display = 'none';
+        }
+
+        // 重置为下一位学生准备
+        function resetForNextStudent() {
+            currentStudentId = null;
+            document.getElementById('quizContainer').style.display = 'none';
+            document.getElementById('scoreCard').style.display = 'none';
+            document.getElementById('coverPage').style.display = 'flex';
+            document.getElementById('studentSelector').value = "";
+            document.getElementById('startButton').disabled = true;
+            document.getElementById('timerDisplay').style.color = 'inherit';
+            
+            initStudentSelector(); // 重新初始化选择器，移除已考学生
+        }
+        
+        // 导出成绩为 CSV (简单实现)
+        function exportToCSV() {
+            if (allScores.length === 0) {
+                alert("暂无成绩数据。");
+                return;
+            }
+            
+            let csvContent = "data:text/csv;charset=utf-8,\ufeff"; // 添加 BOM 以支持中文
+            csvContent += "学号,姓名,得分,用时(秒),提交时间\n";
+            
+            allScores.forEach(row => {
+                csvContent += `${row.studentId},${row.studentName},${row.score},${row.timeUsed},${row.date}\n`;
+            });
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "英语小测验成绩单_U2L1.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 页面加载完成后初始化
+        window.onload = initStudentSelector;
+
     </script>
 </body>
 </html>
